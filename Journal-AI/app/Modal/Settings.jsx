@@ -1,12 +1,19 @@
-import { View, Text, TouchableOpacity, ScrollView, Switch, SafeAreaView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, SafeAreaView, Animated, BackHandler } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { Easing } from 'react-native';
 
 export default function Settings() {
   const router = useRouter();
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const blurAnim = useRef(new Animated.Value(0)).current;
+  const [isClosing, setIsClosing] = useState(false);
   
   // State for toggle settings
   const [darkMode, setDarkMode] = useState(true);
@@ -15,25 +22,86 @@ export default function Settings() {
   const [autoSave, setAutoSave] = useState(true);
   const [biometricLock, setBiometricLock] = useState(false);
   
-  // Handle close settings
+  // Animate in when component mounts
+  useEffect(() => {
+    // Start animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.ease),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }),
+      Animated.timing(blurAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }),
+    ]).start();
+    
+    // Handle back button press
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!isClosing) {
+        handleClose();
+        return true;
+      }
+      return false;
+    });
+    
+    return () => backHandler.remove();
+  }, []);
+  
+  // Handle close settings with animation
   const handleClose = () => {
-    router.back();
+    if (isClosing) return;
+    
+    setIsClosing(true);
+    
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 50,
+        duration: 350,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(blurAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: false,
+        easing: Easing.in(Easing.ease),
+      }),
+    ]).start(() => {
+      router.back();
+    });
   };
   
   // Setting item component
   const SettingItem = ({ icon, title, description, type, value, onValueChange, onPress }) => (
     <TouchableOpacity 
-      style={styles.settingItem}
+      className="flex-row items-center py-4 px-4"
       onPress={onPress}
       disabled={type === 'toggle'}
     >
-      <View style={[styles.settingIconContainer, type === 'danger' && styles.dangerIconContainer]}>
+      <View className={`w-10 h-10 rounded-xl justify-center items-center mr-4 ${type === 'danger' ? 'bg-red-500/20' : 'bg-black/60'}`}>
         <Ionicons name={icon} size={22} color={type === 'danger' ? "#f87171" : "#d6d3d1"} />
       </View>
       
-      <View style={styles.settingContent}>
-        <Text style={[styles.settingTitle, type === 'danger' && styles.dangerText]}>{title}</Text>
-        {description && <Text style={styles.settingDescription}>{description}</Text>}
+      <View className="flex-1">
+        <Text className={`text-base font-medium mb-0.5 ${type === 'danger' ? 'text-red-400' : 'text-white'}`}>{title}</Text>
+        {description && <Text className="text-sm text-zinc-500">{description}</Text>}
       </View>
       
       {type === 'toggle' && (
@@ -54,35 +122,56 @@ export default function Settings() {
   
   // Section header component
   const SectionHeader = ({ title }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View className="px-5 py-4 bg-transparent">
+      <Text className="text-sm font-semibold text-blue-500 uppercase tracking-wider">{title}</Text>
     </View>
   );
   
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-black">
       <StatusBar style="light" />
       
-      <LinearGradient
-        colors={['rgba(24, 24, 27, 0.9)', 'rgba(9, 9, 11, 1)']}
-        style={styles.gradient}
-      />
+      {/* Animated blur background */}
+      <Animated.View
+        style={[
+          { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: blurAnim }
+        ]}
+      >
+        <BlurView
+          intensity={50}
+          tint="dark"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      </Animated.View>
       
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
+      <Animated.View 
+        className="flex-row justify-between items-center px-5 py-4 border-b border-zinc-950"
+        style={{ 
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }}
+      >
+        <Text className="text-2xl font-bold text-white">Settings</Text>
         <TouchableOpacity 
-          style={styles.closeButton}
+          className="p-1"
           onPress={handleClose}
         >
-          <View style={styles.closeButtonCircle}>
+          <View className="w-9 h-9 rounded-full bg-black/60 justify-center items-center">
             <Ionicons name="close" size={20} color="#d6d3d1" />
           </View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView 
+        className="flex-1"
+        style={{ 
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }} 
+        showsVerticalScrollIndicator={false}
+      >
         <SectionHeader title="Appearance" />
-        <View style={styles.settingGroup}>
+        <View className="mx-4 rounded-2xl bg-zinc-950 overflow-hidden mb-2">
           <SettingItem
             icon="moon-outline"
             title="Dark Mode"
@@ -94,7 +183,7 @@ export default function Settings() {
         </View>
         
         <SectionHeader title="Notifications" />
-        <View style={styles.settingGroup}>
+        <View className="mx-4 rounded-2xl bg-zinc-950 overflow-hidden mb-2">
           <SettingItem
             icon="notifications-outline"
             title="Push Notifications"
@@ -106,7 +195,7 @@ export default function Settings() {
         </View>
         
         <SectionHeader title="Journal" />
-        <View style={styles.settingGroup}>
+        <View className="mx-4 rounded-2xl bg-zinc-950 overflow-hidden mb-2">
           <SettingItem
             icon="save-outline"
             title="Auto-Save"
@@ -115,7 +204,7 @@ export default function Settings() {
             value={autoSave}
             onValueChange={setAutoSave}
           />
-          <View style={styles.divider} />
+          <View className="h-[1px] bg-zinc-900 ml-14" />
           <SettingItem
             icon="volume-medium-outline"
             title="Sound Effects"
@@ -127,7 +216,7 @@ export default function Settings() {
         </View>
         
         <SectionHeader title="Privacy & Security" />
-        <View style={styles.settingGroup}>
+        <View className="mx-4 rounded-2xl bg-zinc-950 overflow-hidden mb-2">
           <SettingItem
             icon="finger-print-outline"
             title="Biometric Lock"
@@ -136,14 +225,14 @@ export default function Settings() {
             value={biometricLock}
             onValueChange={setBiometricLock}
           />
-          <View style={styles.divider} />
+          <View className="h-[1px] bg-zinc-900 ml-14" />
           <SettingItem
             icon="lock-closed-outline"
             title="Privacy Policy"
             type="navigate"
             onPress={() => console.log('Navigate to Privacy Policy')}
           />
-          <View style={styles.divider} />
+          <View className="h-[1px] bg-zinc-900 ml-14" />
           <SettingItem
             icon="document-text-outline"
             title="Terms of Service"
@@ -153,7 +242,7 @@ export default function Settings() {
         </View>
         
         <SectionHeader title="Account" />
-        <View style={styles.settingGroup}>
+        <View className="mx-4 rounded-2xl bg-zinc-950 overflow-hidden mb-2">
           <SettingItem
             icon="cloud-upload-outline"
             title="Backup & Sync"
@@ -161,7 +250,7 @@ export default function Settings() {
             type="navigate"
             onPress={() => console.log('Navigate to Backup & Sync')}
           />
-          <View style={styles.divider} />
+          <View className="h-[1px] bg-zinc-900 ml-14" />
           <SettingItem
             icon="trash-outline"
             title="Clear All Data"
@@ -172,7 +261,7 @@ export default function Settings() {
         </View>
         
         <SectionHeader title="About" />
-        <View style={styles.settingGroup}>
+        <View className="mx-4 rounded-2xl bg-zinc-950 overflow-hidden mb-2">
           <SettingItem
             icon="information-circle-outline"
             title="App Version"
@@ -180,7 +269,7 @@ export default function Settings() {
             type="navigate"
             onPress={() => console.log('Show app version info')}
           />
-          <View style={styles.divider} />
+          <View className="h-[1px] bg-zinc-900 ml-14" />
           <SettingItem
             icon="help-circle-outline"
             title="Help & Support"
@@ -189,118 +278,13 @@ export default function Settings() {
           />
         </View>
         
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Journal AI © 2023</Text>
-        </View>
-      </ScrollView>
+        <Animated.View 
+          className="p-6 items-center"
+          style={{ opacity: fadeAnim }}
+        >
+          <Text className="text-sm text-zinc-600">Journal AI © 2023</Text>
+        </Animated.View>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#09090b',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 200,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#18181b',
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  closeButtonCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#18181b',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  sectionHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'transparent',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3b82f6',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  settingGroup: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: '#18181b',
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#27272a',
-    marginLeft: 56,
-  },
-  settingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#27272a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  dangerIconContainer: {
-    backgroundColor: 'rgba(248, 113, 113, 0.2)',
-  },
-  settingContent: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#ffffff',
-    marginBottom: 2,
-  },
-  dangerText: {
-    color: '#f87171',
-  },
-  settingDescription: {
-    fontSize: 14,
-    color: '#71717a',
-  },
-  footer: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#52525b',
-  },
-});

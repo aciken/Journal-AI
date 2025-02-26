@@ -36,9 +36,9 @@ export default function JournalPage() {
     preloadIcons();
   }, []);
   
-  // Elegant animation sequence
+  // Elegant animation sequence - only for opening now
   useEffect(() => {
-    // Reset animation values immediately when state changes
+    // Only handle opening animation here
     if (isBlurred) {
       // Reset to initial values before starting open animation
       contentAnim.setValue(0);
@@ -59,39 +59,8 @@ export default function JournalPage() {
         easing: Easing.out(Easing.cubic),
         // No delay - start immediately after blur begins
       }).start();
-    } else {
-      // More pronounced closing animation
-      contentAnim.setValue(1); // Ensure we start from 1
-      blurAnim.setValue(1); // Ensure we start from 1
-      
-      // Use parallel for more immediate visual feedback
-      Animated.parallel([
-        // Animate content out with more dramatic movement
-        Animated.timing(contentAnim, {
-          toValue: 0,
-          duration: 250, // Slightly longer to be more noticeable
-          useNativeDriver: true,
-          easing: Easing.in(Easing.cubic),
-        }),
-        
-        // Delay the blur fadeout slightly
-        Animated.sequence([
-          Animated.delay(50),
-          Animated.timing(blurAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: false,
-            easing: Easing.in(Easing.ease),
-          }),
-        ]),
-      ]).start(() => {
-        // Ensure values are reset after animation completes
-        if (!isBlurred) {
-          blurAnim.setValue(0);
-          contentAnim.setValue(0);
-        }
-      });
     }
+    // Closing is now handled in toggleMenu and modal handlers
   }, [isBlurred]);
   
   // Derived animations for content elements - simplified for opening
@@ -126,12 +95,38 @@ export default function JournalPage() {
   
   // Toggle menu function with animation reset
   const toggleMenu = () => {
-    // If we're about to open the menu, ensure animations are reset
+    // If we're about to open the menu, ensure animations are reset and open immediately
     if (!isBlurred) {
       blurAnim.setValue(0);
       contentAnim.setValue(0);
+      setIsBlurred(true);
+    } else {
+      // For closing, animate first, then update state
+      // Use parallel for more immediate visual feedback
+      Animated.parallel([
+        // Animate content out with more dramatic movement
+        Animated.timing(contentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        
+        // Delay the blur fadeout slightly
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.timing(blurAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+            easing: Easing.in(Easing.ease),
+          }),
+        ]),
+      ]).start(() => {
+        // Only update state after animation completes
+        setIsBlurred(false);
+      });
     }
-    setIsBlurred(!isBlurred);
   };
   
   // Navigate to Blur Test Page
@@ -277,12 +272,66 @@ export default function JournalPage() {
             visible={isBlurred}
             transparent={true}
             animationType="none"
-            onRequestClose={() => setIsBlurred(false)}
+            onRequestClose={() => {
+              // Handle back button press with animation
+              if (isBlurred) {
+                Animated.parallel([
+                  // Animate content out with more dramatic movement
+                  Animated.timing(contentAnim, {
+                    toValue: 0,
+                    duration: 250,
+                    useNativeDriver: true,
+                    easing: Easing.in(Easing.cubic),
+                  }),
+                  
+                  // Delay the blur fadeout slightly
+                  Animated.sequence([
+                    Animated.delay(50),
+                    Animated.timing(blurAnim, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                      easing: Easing.in(Easing.ease),
+                    }),
+                  ]),
+                ]).start(() => {
+                  // Only update state after animation completes
+                  setIsBlurred(false);
+                });
+                return true;
+              }
+              return false;
+            }}
           >
             <TouchableOpacity
               activeOpacity={1}
               style={{ flex: 1 }}
-              onPress={() => setIsBlurred(false)}
+              onPress={() => {
+                // Animate closing when backdrop is pressed
+                Animated.parallel([
+                  // Animate content out with more dramatic movement
+                  Animated.timing(contentAnim, {
+                    toValue: 0,
+                    duration: 250,
+                    useNativeDriver: true,
+                    easing: Easing.in(Easing.cubic),
+                  }),
+                  
+                  // Delay the blur fadeout slightly
+                  Animated.sequence([
+                    Animated.delay(50),
+                    Animated.timing(blurAnim, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                      easing: Easing.in(Easing.ease),
+                    }),
+                  ]),
+                ]).start(() => {
+                  // Only update state after animation completes
+                  setIsBlurred(false);
+                });
+              }}
             >
               {/* Beautiful blur animation */}
               <Animated.View

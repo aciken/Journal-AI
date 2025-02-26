@@ -1,4 +1,4 @@
-import { View, TextInput, SafeAreaView, TouchableOpacity, Keyboard, Text, Animated, Easing, FlatList, ScrollView, Modal } from 'react-native';
+import { View, TextInput, SafeAreaView, TouchableOpacity, Keyboard, Text, Animated, Easing, FlatList, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,11 +59,8 @@ export default function Home() {
         useNativeDriver: true,
         easing: Easing.out(Easing.cubic),
       }).start();
-    } else {
+    } else if (blurAnim._value > 0) { // Only run closing animation if modal was open
       // Closing animation
-      modalContentAnim.setValue(1);
-      blurAnim.setValue(1);
-      
       Animated.parallel([
         // Animate content out
         Animated.timing(modalContentAnim, {
@@ -109,11 +106,8 @@ export default function Home() {
         useNativeDriver: true,
         easing: Easing.out(Easing.cubic),
       }).start();
-    } else {
+    } else if (namingBlurAnim._value > 0) { // Only run closing animation if modal was open
       // Closing animation
-      namingModalContentAnim.setValue(1);
-      namingBlurAnim.setValue(1);
-      
       Animated.parallel([
         // Animate content out
         Animated.timing(namingModalContentAnim, {
@@ -159,11 +153,8 @@ export default function Home() {
         useNativeDriver: true,
         easing: Easing.out(Easing.cubic),
       }).start();
-    } else {
+    } else if (createBlurAnim._value > 0) { // Only run closing animation if modal was open
       // Closing animation
-      createModalContentAnim.setValue(1);
-      createBlurAnim.setValue(1);
-      
       Animated.parallel([
         // Animate content out
         Animated.timing(createModalContentAnim, {
@@ -195,10 +186,7 @@ export default function Home() {
     // Set the selected folder
     setSelectedFolder(folderId === selectedFolder ? null : folderId);
     
-    // Close the modal
-    setShowFolderModal(false);
-    
-    // Run the animation
+    // First run the animation, then close the modal
     Animated.sequence([
       Animated.timing(folderSelectionAnim, {
         toValue: 1,
@@ -212,15 +200,42 @@ export default function Home() {
         useNativeDriver: true,
         easing: Easing.out(Easing.ease),
       }),
-    ]).start();
+    ]).start(() => {
+      // Close the modal after animation completes
+      setShowFolderModal(false);
+    });
   };
   
   // Create new journal entry
   const createNewJournal = (type) => {
     setNewJournalType(type);
     setNewJournalName('');
-    setShowCreateModal(false);
-    setShowNamingModal(true);
+    
+    // First animate the create modal closing
+    Animated.parallel([
+      // Animate content out
+      Animated.timing(createModalContentAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      
+      // Delay the blur fadeout slightly
+      Animated.sequence([
+        Animated.delay(50),
+        Animated.timing(createBlurAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+          easing: Easing.in(Easing.ease),
+        }),
+      ]),
+    ]).start(() => {
+      // After animation completes, close create modal and open naming modal
+      setShowCreateModal(false);
+      setShowNamingModal(true);
+    });
   };
   
   // Confirm journal creation and navigate
@@ -245,13 +260,35 @@ export default function Home() {
     // Add to journal entries
     setJournalEntries([newEntry, ...journalEntries]);
     
-    // Close the naming modal
-    setShowNamingModal(false);
-    
-    // Navigate to the journal page
-    router.push({
-      pathname: "/JournalPage",
-      params: { id: newEntry.id }
+    // First animate the naming modal closing
+    Animated.parallel([
+      // Animate content out
+      Animated.timing(namingModalContentAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      
+      // Delay the blur fadeout slightly
+      Animated.sequence([
+        Animated.delay(50),
+        Animated.timing(namingBlurAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+          easing: Easing.in(Easing.ease),
+        }),
+      ]),
+    ]).start(() => {
+      // After animation completes, close naming modal and navigate
+      setShowNamingModal(false);
+      
+      // Navigate to the journal page
+      router.push({
+        pathname: "/JournalPage",
+        params: { id: newEntry.id }
+      });
     });
   };
   
@@ -731,12 +768,12 @@ export default function Home() {
         <View className="p-4 border-b border-zinc-800">
           <View className="flex-row justify-between items-center">
             <Text className="text-white font-medium text-base">{item.title}</Text>
-            <View className="flex-row items-center">
+          <View className="flex-row items-center">
               <Ionicons name={getEntryTypeIcon(item.type)} size={14} color="#a8a29e" />
               <View className="w-1 h-1 mx-2 bg-zinc-700 rounded-full" />
               <Ionicons name={getMoodIcon(item.mood)} size={14} color="#a8a29e" />
-            </View>
           </View>
+        </View>
           <View className="flex-row items-center mt-1">
             <Text className="text-zinc-500 text-xs">{item.date}</Text>
             <Text className="text-zinc-600 text-xs mx-1">•</Text>
@@ -759,15 +796,15 @@ export default function Home() {
         <View className="p-4">
           <Text className="text-zinc-300 leading-5">{item.content}</Text>
           
-          <View className="flex-row mt-3 justify-end">
+        <View className="flex-row mt-3 justify-end">
             <TouchableOpacity className="mr-3 bg-zinc-800 rounded-full p-1.5">
               <Ionicons name="pencil-outline" size={14} color="#a8a29e" />
-            </TouchableOpacity>
+          </TouchableOpacity>
             <TouchableOpacity className="bg-zinc-800 rounded-full p-1.5">
               <Ionicons name="trash-outline" size={14} color="#a8a29e" />
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </View>
+      </View>
       </TouchableOpacity>
     );
   };
@@ -807,12 +844,60 @@ export default function Home() {
       visible={showFolderModal}
       transparent={true}
       animationType="none"
-      onRequestClose={() => setShowFolderModal(false)}
+      onRequestClose={() => {
+        // Animate closing when back button is pressed
+        Animated.parallel([
+          // Animate content out
+          Animated.timing(modalContentAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+            easing: Easing.in(Easing.cubic),
+          }),
+          
+          // Delay the blur fadeout slightly
+          Animated.sequence([
+            Animated.delay(50),
+            Animated.timing(blurAnim, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: false,
+              easing: Easing.in(Easing.ease),
+            }),
+          ]),
+        ]).start(() => {
+          setShowFolderModal(false);
+        });
+      }}
     >
       <TouchableOpacity 
         activeOpacity={1}
         style={{ flex: 1 }}
-        onPress={() => setShowFolderModal(false)}
+        onPress={() => {
+          // Animate closing when backdrop is pressed
+          Animated.parallel([
+            // Animate content out
+            Animated.timing(modalContentAnim, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+            
+            // Delay the blur fadeout slightly
+            Animated.sequence([
+              Animated.delay(50),
+              Animated.timing(blurAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+                easing: Easing.in(Easing.ease),
+              }),
+            ]),
+          ]).start(() => {
+            setShowFolderModal(false);
+          });
+        }}
       >
         {/* Dark overlay with animated opacity */}
         <Animated.View
@@ -868,7 +953,7 @@ export default function Home() {
               data={folders}
               keyExtractor={item => item.id}
               renderItem={({ item }) => (
-                <TouchableOpacity 
+      <TouchableOpacity 
                   className="flex-row items-center p-4 border-b border-zinc-800"
                   onPress={() => animateFolderSelection(item.id)}
                 >
@@ -885,19 +970,19 @@ export default function Home() {
               ListFooterComponent={
                 <TouchableOpacity 
                   className="flex-row items-center p-4"
-                  onPress={() => {
+        onPress={() => {
                     console.log('Create new folder');
                     setShowFolderModal(false);
-                  }}
-                >
+        }}
+      >
                   <View className="w-6 h-6 rounded-full bg-zinc-800 items-center justify-center mr-2">
                     <Ionicons name="add" size={16} color="#d6d3d1" />
                   </View>
                   <Text className="text-blue-400">Create New Folder</Text>
-                </TouchableOpacity>
+      </TouchableOpacity>
               }
             />
-          </View>
+    </View>
         </Animated.View>
       </TouchableOpacity>
     </Modal>
@@ -909,12 +994,60 @@ export default function Home() {
       visible={showCreateModal}
       transparent={true}
       animationType="none"
-      onRequestClose={() => setShowCreateModal(false)}
+      onRequestClose={() => {
+        // Animate closing when back button is pressed
+        Animated.parallel([
+          // Animate content out
+          Animated.timing(createModalContentAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+            easing: Easing.in(Easing.cubic),
+          }),
+          
+          // Delay the blur fadeout slightly
+          Animated.sequence([
+            Animated.delay(50),
+            Animated.timing(createBlurAnim, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: false,
+              easing: Easing.in(Easing.ease),
+            }),
+          ]),
+        ]).start(() => {
+          setShowCreateModal(false);
+        });
+      }}
     >
       <TouchableOpacity 
         activeOpacity={1}
         style={{ flex: 1 }}
-        onPress={() => setShowCreateModal(false)}
+        onPress={() => {
+          // Animate closing when backdrop is pressed
+          Animated.parallel([
+            // Animate content out
+            Animated.timing(createModalContentAnim, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+            
+            // Delay the blur fadeout slightly
+            Animated.sequence([
+              Animated.delay(50),
+              Animated.timing(createBlurAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+                easing: Easing.in(Easing.ease),
+              }),
+            ]),
+          ]).start(() => {
+            setShowCreateModal(false);
+          });
+        }}
       >
         {/* Dark overlay with animated opacity */}
         <Animated.View
@@ -1034,12 +1167,60 @@ export default function Home() {
       visible={showNamingModal}
       transparent={true}
       animationType="none"
-      onRequestClose={() => setShowNamingModal(false)}
+      onRequestClose={() => {
+        // Animate closing when back button is pressed
+        Animated.parallel([
+          // Animate content out
+          Animated.timing(namingModalContentAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+            easing: Easing.in(Easing.cubic),
+          }),
+          
+          // Delay the blur fadeout slightly
+          Animated.sequence([
+            Animated.delay(50),
+            Animated.timing(namingBlurAnim, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: false,
+              easing: Easing.in(Easing.ease),
+            }),
+          ]),
+        ]).start(() => {
+          setShowNamingModal(false);
+        });
+      }}
     >
       <TouchableOpacity 
         activeOpacity={1}
         style={{ flex: 1 }}
-        onPress={() => setShowNamingModal(false)}
+        onPress={() => {
+          // Animate closing when backdrop is pressed
+          Animated.parallel([
+            // Animate content out
+            Animated.timing(namingModalContentAnim, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+            
+            // Delay the blur fadeout slightly
+            Animated.sequence([
+              Animated.delay(50),
+              Animated.timing(namingBlurAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+                easing: Easing.in(Easing.ease),
+              }),
+            ]),
+          ]).start(() => {
+            setShowNamingModal(false);
+          });
+        }}
       >
         {/* Dark overlay with animated opacity */}
         <Animated.View
@@ -1116,8 +1297,8 @@ export default function Home() {
                 </View>
                 <Text className="text-white text-base">
                   {newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal
-                </Text>
-              </View>
+      </Text>
+    </View>
               
               <View className="bg-zinc-800/80 rounded-lg border border-zinc-700/50 px-4 py-3 mb-4">
                 <TextInput
@@ -1221,11 +1402,11 @@ export default function Home() {
         <View className="flex-1 px-4 pt-2">
           <JournalHeader />
           
-          <FlatList
+            <FlatList
             data={getFilteredEntries()}
-            renderItem={renderJournalEntry}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
+              renderItem={renderJournalEntry}
+              keyExtractor={item => item.id}
+              showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
             ListEmptyComponent={
               <View className="flex-1 justify-center items-center py-20">
@@ -1245,42 +1426,39 @@ export default function Home() {
         </View>
       </TouchableOpacity>
 
-      <View className="px-4 pb-8 pt-2">
-        <LinearGradient
-          colors={['#44403c', '#78716c', '#a8a29e']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="rounded-full p-[1.5px]"
-        >
-          <View className="flex-row items-center bg-[#1C1C1E] rounded-full px-4 py-3.5">
-            {inputText === '' && !isFocused && renderPlaceholderText()}
-            <TextInput
-              value={inputText}
-              onChangeText={setInputText}
-              className="flex-1 text-base text-gray-200 mr-2"
-              multiline={false}
-              returnKeyType="send"
-              blurOnSubmit={true}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              onSubmitEditing={handleJournalSubmit}
-            />
+      {/* Animated Ask Journal Button - Fixed at bottom */}
+      <View className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+        <View className="rounded-full overflow-hidden" style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 5
+        }}>
+          <LinearGradient
+            colors={['rgba(39, 39, 42, 0.9)', 'rgba(24, 24, 27, 0.9)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            className="p-[1px] rounded-full"
+          >
             <TouchableOpacity
-              className="bg-transparent"
-              activeOpacity={0.7}
-              onPress={handleJournalSubmit}
+              className="w-full h-12 rounded-full"
+              style={{ backgroundColor: 'rgba(24, 24, 27, 0.8)' }}
+              onPress={() => router.push({
+                pathname: '/AskJournal',
+                params: { 
+                  // We'll pass the necessary data as params
+                  // In a real app, you might use a context or state management library instead
+                }
+              })}
             >
-              <LinearGradient
-                colors={['#44403c', '#78716c', '#a8a29e']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                className="rounded-full p-2"
-              >
-                <Ionicons name="mic" size={20} color="#1C1C1E" />
-              </LinearGradient>
+              <View className="w-full h-full flex-row items-center justify-center">
+                <Ionicons name="search" size={18} color="#e4e4e7" style={{ marginRight: 8 }} />
+                <Text className="text-zinc-200 text-base font-medium">Ask Your Journal</Text>
+              </View>
             </TouchableOpacity>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
+        </View>
       </View>
     </SafeAreaView>
   );
