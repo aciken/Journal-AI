@@ -7,6 +7,8 @@ export default function Layout() {
             headerShown: false,
           }}>
             <Stack.Screen name="Home" />  
+            <Stack.Screen name="JournalPage" />
+            <Stack.Screen name="BlurTestPage" />
         </Stack>
     )
 }

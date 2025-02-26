@@ -4,8 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import TextIcon from '../../assets/Icons/TextIcon.png';
+import VoiceIcon from '../../assets/Icons/VoiceIcon.png';
+import { Image } from 'react-native';
 
 export default function Home() {
+  const router = useRouter();
   const [folders, setFolders] = useState([
     { id: '1', name: 'Personal', color: '#3b82f6' },
     { id: '2', name: 'Work', color: '#ef4444' },
@@ -13,6 +19,292 @@ export default function Home() {
   ]);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showNamingModal, setShowNamingModal] = useState(false);
+  const [newJournalType, setNewJournalType] = useState('');
+  const [newJournalName, setNewJournalName] = useState('');
+  const [folderSelectionAnim] = useState(new Animated.Value(0));
+  
+  // Animation values for folder modal
+  const blurAnim = useRef(new Animated.Value(0)).current;
+  const modalContentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Animation values for naming modal
+  const namingBlurAnim = useRef(new Animated.Value(0)).current;
+  const namingModalContentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Animation values for create modal
+  const createBlurAnim = useRef(new Animated.Value(0)).current;
+  const createModalContentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Animate folder modal
+  useEffect(() => {
+    if (showFolderModal) {
+      // Reset animation values
+      blurAnim.setValue(0);
+      modalContentAnim.setValue(0);
+      
+      // Open animation - start blur immediately
+      Animated.timing(blurAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }).start();
+      
+      // Then bring in the content
+      Animated.timing(modalContentAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }).start();
+    } else {
+      // Closing animation
+      modalContentAnim.setValue(1);
+      blurAnim.setValue(1);
+      
+      Animated.parallel([
+        // Animate content out
+        Animated.timing(modalContentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        
+        // Delay the blur fadeout slightly
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.timing(blurAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+            easing: Easing.in(Easing.ease),
+          }),
+        ]),
+      ]).start();
+    }
+  }, [showFolderModal]);
+  
+  // Animate naming modal
+  useEffect(() => {
+    if (showNamingModal) {
+      // Reset animation values
+      namingBlurAnim.setValue(0);
+      namingModalContentAnim.setValue(0);
+      
+      // Open animation - start blur immediately
+      Animated.timing(namingBlurAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }).start();
+      
+      // Then bring in the content
+      Animated.timing(namingModalContentAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }).start();
+    } else {
+      // Closing animation
+      namingModalContentAnim.setValue(1);
+      namingBlurAnim.setValue(1);
+      
+      Animated.parallel([
+        // Animate content out
+        Animated.timing(namingModalContentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        
+        // Delay the blur fadeout slightly
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.timing(namingBlurAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+            easing: Easing.in(Easing.ease),
+          }),
+        ]),
+      ]).start();
+    }
+  }, [showNamingModal]);
+  
+  // Animate create modal
+  useEffect(() => {
+    if (showCreateModal) {
+      // Reset animation values
+      createBlurAnim.setValue(0);
+      createModalContentAnim.setValue(0);
+      
+      // Open animation - start blur immediately
+      Animated.timing(createBlurAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }).start();
+      
+      // Then bring in the content
+      Animated.timing(createModalContentAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }).start();
+    } else {
+      // Closing animation
+      createModalContentAnim.setValue(1);
+      createBlurAnim.setValue(1);
+      
+      Animated.parallel([
+        // Animate content out
+        Animated.timing(createModalContentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        
+        // Delay the blur fadeout slightly
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.timing(createBlurAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+            easing: Easing.in(Easing.ease),
+          }),
+        ]),
+      ]).start();
+    }
+  }, [showCreateModal]);
+  
+  // Animation for folder selection
+  const animateFolderSelection = (folderId) => {
+    // Reset animation value
+    folderSelectionAnim.setValue(0);
+    
+    // Set the selected folder
+    setSelectedFolder(folderId === selectedFolder ? null : folderId);
+    
+    // Close the modal
+    setShowFolderModal(false);
+    
+    // Run the animation
+    Animated.sequence([
+      Animated.timing(folderSelectionAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.5)),
+      }),
+      Animated.timing(folderSelectionAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.ease),
+      }),
+    ]).start();
+  };
+  
+  // Create new journal entry
+  const createNewJournal = (type) => {
+    setNewJournalType(type);
+    setNewJournalName('');
+    setShowCreateModal(false);
+    setShowNamingModal(true);
+  };
+  
+  // Confirm journal creation and navigate
+  const confirmJournalCreation = () => {
+    if (!newJournalName.trim()) {
+      // Default name if empty
+      setNewJournalName(`New ${newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal`);
+    }
+    
+    // Create a new journal entry
+    const newEntry = {
+      id: Date.now().toString(),
+      title: newJournalName.trim() || `New ${newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal`,
+      date: 'Today',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      content: '',
+      mood: 'default',
+      type: newJournalType,
+      folderId: selectedFolder
+    };
+    
+    // Add to journal entries
+    setJournalEntries([newEntry, ...journalEntries]);
+    
+    // Close the naming modal
+    setShowNamingModal(false);
+    
+    // Navigate to the journal page
+    router.push({
+      pathname: "/JournalPage",
+      params: { id: newEntry.id }
+    });
+  };
+  
+  // Derived animations for folder modal
+  const modalScale = modalContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
+  
+  const modalTranslateY = modalContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+  
+  // Background opacity for a subtle fade effect
+  const backdropOpacity = blurAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.5],
+  });
+  
+  // Derived animations for create modal
+  const createModalScale = createModalContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
+  
+  const createModalTranslateY = createModalContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+  
+  // Background opacity for create modal
+  const createBackdropOpacity = createBlurAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.5],
+  });
+  
+  // Derived animations for naming modal
+  const namingModalScale = namingModalContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
+  
+  const namingModalTranslateY = namingModalContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+  
+  // Background opacity for naming modal
+  const namingBackdropOpacity = namingBlurAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.5],
+  });
   
   const [inputText, setInputText] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -148,6 +440,18 @@ export default function Home() {
     const calendarHeight = useRef(new Animated.Value(0)).current;
     const calendarOpacity = useRef(new Animated.Value(0)).current;
     
+    // Folder selection animation scale
+    const folderSelectionScale = folderSelectionAnim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [1, 1.1, 1],
+    });
+    
+    // Folder selection animation color
+    const folderSelectionOpacity = folderSelectionAnim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [1, 0.7, 1],
+    });
+    
     useEffect(() => {
       if (showCalendar) {
         Animated.parallel([
@@ -205,18 +509,32 @@ export default function Home() {
       return folder ? folder.name : "All Journals";
     };
     
+    const getFolderColor = () => {
+      if (!selectedFolder) return null;
+      const folder = folders.find(f => f.id === selectedFolder);
+      return folder ? folder.color : null;
+    };
+    
     return (
       <View className="mb-6">
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
             <Text className="text-white text-2xl font-bold mr-2">Journal</Text>
-            <TouchableOpacity 
-              className="flex-row items-center bg-zinc-800/40 rounded-lg px-2 py-1"
-              onPress={() => setShowFolderModal(true)}
+            <Animated.View
+              style={{
+                transform: [{ scale: folderSelectionScale }],
+                opacity: folderSelectionOpacity,
+              }}
             >
-              <Text className="text-gray-300 text-sm mr-1">{getCurrentFolder()}</Text>
-              <Ionicons name="chevron-down" size={14} color="#a8a29e" />
-            </TouchableOpacity>
+              <TouchableOpacity 
+                className="flex-row items-center bg-zinc-800/40 rounded-lg px-2 py-1"
+                onPress={() => setShowFolderModal(true)}
+                style={selectedFolder ? { borderLeftWidth: 3, borderLeftColor: getFolderColor(), paddingLeft: 6 } : {}}
+              >
+                <Text className="text-gray-300 text-sm mr-1">{getCurrentFolder()}</Text>
+                <Ionicons name="chevron-down" size={14} color="#a8a29e" />
+              </TouchableOpacity>
+            </Animated.View>
           </View>
           
           <View className="flex-row">
@@ -229,14 +547,14 @@ export default function Home() {
             
             <TouchableOpacity 
               className="bg-zinc-800/80 rounded-full p-2 mr-2"
-              onPress={() => console.log('Create new journal entry')}
+              onPress={() => setShowCreateModal(true)}
             >
               <Ionicons name="add" size={20} color="#d6d3d1" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               className="bg-zinc-800/80 rounded-full p-2"
-              onPress={() => console.log('Open settings')}
+              onPress={() => router.push('/Modal/Settings')}
             >
               <Ionicons name="settings-outline" size={20} color="#d6d3d1" />
             </TouchableOpacity>
@@ -396,7 +714,13 @@ export default function Home() {
     const folderColor = getFolderColor(item.folderId);
 
     return (
-      <View className="mb-4 bg-zinc-900/80 rounded-xl overflow-hidden">
+      <TouchableOpacity 
+        className="mb-4 bg-zinc-900/80 rounded-xl overflow-hidden"
+        onPress={() => router.push({
+          pathname: "/JournalPage",
+          params: { id: item.id }
+        })}
+      >
         {folderColor && (
           <View 
             className="h-1 w-full" 
@@ -444,7 +768,7 @@ export default function Home() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -482,56 +806,396 @@ export default function Home() {
     <Modal
       visible={showFolderModal}
       transparent={true}
-      animationType="fade"
+      animationType="none"
       onRequestClose={() => setShowFolderModal(false)}
     >
       <TouchableOpacity 
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
         activeOpacity={1}
+        style={{ flex: 1 }}
         onPress={() => setShowFolderModal(false)}
       >
-        <View className="bg-zinc-900 m-6 rounded-xl overflow-hidden" style={{ marginTop: 100 }}>
-          <View className="border-b border-zinc-800 p-4">
-            <Text className="text-white text-lg font-medium">Folders</Text>
-          </View>
-          
-          <FlatList
-            data={folders}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                className="flex-row items-center p-4 border-b border-zinc-800"
-                onPress={() => {
-                  setSelectedFolder(item.id === selectedFolder ? null : item.id);
-                  setShowFolderModal(false);
-                }}
-              >
-                <View 
-                  className="w-3 h-3 rounded-full mr-3" 
-                  style={{ backgroundColor: item.color }}
-                />
-                <Text className="text-white flex-1">{item.name}</Text>
-                {selectedFolder === item.id && (
-                  <Ionicons name="checkmark" size={20} color="#d6d3d1" />
-                )}
-              </TouchableOpacity>
-            )}
-            ListFooterComponent={
-              <TouchableOpacity 
-                className="flex-row items-center p-4"
-                onPress={() => {
-                  console.log('Create new folder');
-                  setShowFolderModal(false);
-                }}
-              >
-                <View className="w-6 h-6 rounded-full bg-zinc-800 items-center justify-center mr-2">
-                  <Ionicons name="add" size={16} color="#d6d3d1" />
-                </View>
-                <Text className="text-blue-400">Create New Folder</Text>
-              </TouchableOpacity>
-            }
+        {/* Dark overlay with animated opacity */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            opacity: backdropOpacity,
+          }}
+        />
+        
+        {/* Blur effect */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            opacity: blurAnim,
+          }}
+        >
+          <BlurView
+            intensity={50}
+            tint="dark"
+            style={{
+              width: '100%',
+              height: '100%',
+            }}
           />
-        </View>
+        </Animated.View>
+        
+        {/* Modal content with animation */}
+        <Animated.View 
+          className="flex-1 justify-start items-center px-6"
+          style={{
+            opacity: modalContentAnim,
+            transform: [
+              { translateY: modalTranslateY },
+              { scale: modalScale },
+            ]
+          }}
+        >
+          <View className="bg-zinc-900 rounded-xl overflow-hidden w-full mt-24">
+            <View className="border-b border-zinc-800 p-4">
+              <Text className="text-white text-lg font-medium">Folders</Text>
+            </View>
+            
+            <FlatList
+              data={folders}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  className="flex-row items-center p-4 border-b border-zinc-800"
+                  onPress={() => animateFolderSelection(item.id)}
+                >
+                  <View 
+                    className="w-3 h-3 rounded-full mr-3" 
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <Text className="text-white flex-1">{item.name}</Text>
+                  {selectedFolder === item.id && (
+                    <Ionicons name="checkmark" size={20} color="#d6d3d1" />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListFooterComponent={
+                <TouchableOpacity 
+                  className="flex-row items-center p-4"
+                  onPress={() => {
+                    console.log('Create new folder');
+                    setShowFolderModal(false);
+                  }}
+                >
+                  <View className="w-6 h-6 rounded-full bg-zinc-800 items-center justify-center mr-2">
+                    <Ionicons name="add" size={16} color="#d6d3d1" />
+                  </View>
+                  <Text className="text-blue-400">Create New Folder</Text>
+                </TouchableOpacity>
+              }
+            />
+          </View>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+  );
+  
+  // Create Journal Modal
+  const CreateJournalModal = () => (
+    <Modal
+      visible={showCreateModal}
+      transparent={true}
+      animationType="none"
+      onRequestClose={() => setShowCreateModal(false)}
+    >
+      <TouchableOpacity 
+        activeOpacity={1}
+        style={{ flex: 1 }}
+        onPress={() => setShowCreateModal(false)}
+      >
+        {/* Dark overlay with animated opacity */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            opacity: createBackdropOpacity,
+          }}
+        />
+        
+        {/* Blur effect */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            opacity: createBlurAnim,
+          }}
+        >
+          <BlurView
+            intensity={50}
+            tint="dark"
+            style={{
+              width: '100%',
+              height: '100%',
+            }}
+          />
+        </Animated.View>
+        
+        {/* Modal content with animation */}
+        <Animated.View 
+          className="flex-1 justify-start items-center px-6"
+          style={{
+            opacity: createModalContentAnim,
+            transform: [
+              { translateY: createModalTranslateY },
+              { scale: createModalScale },
+            ]
+          }}
+        >
+          <View className="bg-zinc-900 rounded-xl overflow-hidden w-full mt-24">
+            <View className="border-b border-zinc-800 p-4">
+              <Text className="text-white text-lg font-medium">Create New Journal</Text>
+            </View>
+            
+            <View className="p-4 space-y-5">
+              {/* Text Journal Option */}
+              <TouchableOpacity 
+                className="flex-row items-center"
+                onPress={() => createNewJournal('text')}
+              >
+                <View className="mr-3">
+                  <Image 
+                    source={TextIcon} 
+                    className="h-12 w-12"
+                    resizeMode="contain"
+                    style={{ backgroundColor: 'transparent' }}
+                  />
+                </View>
+                
+                <View className="flex-1">
+                  <Text className="text-white text-lg font-semibold">Text Journal</Text>
+                  <Text className="text-zinc-400 text-sm">Write to your journal</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Voice Journal Option */}
+              <TouchableOpacity 
+                className="flex-row items-center"
+                onPress={() => createNewJournal('voice')}
+              >
+                <View className="mr-3">
+                  <Image 
+                    source={VoiceIcon} 
+                    className="h-12 w-12"
+                    resizeMode="contain"
+                    style={{ backgroundColor: 'transparent' }}
+                  />
+                </View>
+                
+                <View className="flex-1">
+                  <Text className="text-white text-lg font-semibold">Voice Journal</Text>
+                  <Text className="text-zinc-400 text-sm">Speak to your journal</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Photo Journal Option */}
+              <TouchableOpacity 
+                className="flex-row items-center"
+                onPress={() => createNewJournal('photo')}
+              >
+                <View className="bg-zinc-800 rounded-full p-3 mr-3">
+                  <Ionicons name="image-outline" size={24} color="#d6d3d1" />
+                </View>
+                
+                <View className="flex-1">
+                  <Text className="text-white text-lg font-semibold">Photo Journal</Text>
+                  <Text className="text-zinc-400 text-sm">Add photos to your journal</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  // Naming Modal
+  const NamingModal = () => (
+    <Modal
+      visible={showNamingModal}
+      transparent={true}
+      animationType="none"
+      onRequestClose={() => setShowNamingModal(false)}
+    >
+      <TouchableOpacity 
+        activeOpacity={1}
+        style={{ flex: 1 }}
+        onPress={() => setShowNamingModal(false)}
+      >
+        {/* Dark overlay with animated opacity */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            opacity: namingBackdropOpacity,
+          }}
+        />
+        
+        {/* Blur effect */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            opacity: namingBlurAnim,
+          }}
+        >
+          <BlurView
+            intensity={50}
+            tint="dark"
+            style={{
+              width: '100%',
+              height: '100%',
+            }}
+          />
+        </Animated.View>
+        
+        {/* Modal content with animation */}
+        <Animated.View 
+          className="flex-1 justify-start items-center px-6"
+          style={{
+            opacity: namingModalContentAnim,
+            transform: [
+              { translateY: namingModalTranslateY },
+              { scale: namingModalScale },
+            ]
+          }}
+        >
+          <View className="bg-zinc-900 rounded-xl overflow-hidden w-full mt-24">
+            <View className="border-b border-zinc-800 p-4">
+              <Text className="text-white text-lg font-medium">Name Your Journal</Text>
+            </View>
+            
+            <View className="p-4">
+              <View className="flex-row items-center mb-4">
+                <View className="mr-3">
+                  {newJournalType === 'text' ? (
+                    <Image 
+                      source={TextIcon} 
+                      className="h-10 w-10"
+                      resizeMode="contain"
+                      style={{ backgroundColor: 'transparent' }}
+                    />
+                  ) : newJournalType === 'voice' ? (
+                    <Image 
+                      source={VoiceIcon} 
+                      className="h-10 w-10"
+                      resizeMode="contain"
+                      style={{ backgroundColor: 'transparent' }}
+                    />
+                  ) : (
+                    <View className="bg-zinc-800 rounded-full p-2">
+                      <Ionicons name="image-outline" size={20} color="#d6d3d1" />
+                    </View>
+                  )}
+                </View>
+                <Text className="text-white text-base">
+                  {newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal
+                </Text>
+              </View>
+              
+              <View className="bg-zinc-800/80 rounded-lg border border-zinc-700/50 px-4 py-3 mb-4">
+                <TextInput
+                  value={newJournalName}
+                  onChangeText={setNewJournalName}
+                  placeholder="Enter journal name"
+                  placeholderTextColor="#a8a29e"
+                  className="text-white text-base"
+                  autoFocus={true}
+                  returnKeyType="done"
+                  onSubmitEditing={confirmJournalCreation}
+                />
+              </View>
+              
+              {/* Folder Selection */}
+              <View className="mb-4">
+                <Text className="text-zinc-400 text-sm mb-2">Select Folder</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingRight: 20 }}
+                >
+                  <TouchableOpacity 
+                    className={`mr-2 px-3 py-2 rounded-lg flex-row items-center ${selectedFolder === null ? 'bg-zinc-700' : 'bg-zinc-800'}`}
+                    onPress={() => setSelectedFolder(null)}
+                  >
+                    <Ionicons name="albums-outline" size={16} color="#d6d3d1" style={{ marginRight: 6 }} />
+                    <Text className="text-white text-sm">All Journals</Text>
+                  </TouchableOpacity>
+                  
+                  {folders.map(folder => (
+                    <TouchableOpacity 
+                      key={folder.id}
+                      className={`mr-2 px-3 py-2 rounded-lg flex-row items-center ${selectedFolder === folder.id ? 'bg-zinc-700' : 'bg-zinc-800'}`}
+                      onPress={() => setSelectedFolder(folder.id)}
+                      style={selectedFolder === folder.id ? { borderLeftWidth: 3, borderLeftColor: folder.color, paddingLeft: 8 } : {}}
+                    >
+                      <View 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: folder.color }}
+                      />
+                      <Text className="text-white text-sm">{folder.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  
+                  <TouchableOpacity 
+                    className="mr-2 px-3 py-2 rounded-lg flex-row items-center bg-zinc-800/60"
+                    onPress={() => {
+                      // Here you would open a create folder modal
+                      console.log('Create new folder');
+                    }}
+                  >
+                    <View className="w-5 h-5 rounded-full bg-zinc-700 items-center justify-center mr-2">
+                      <Ionicons name="add" size={12} color="#d6d3d1" />
+                    </View>
+                    <Text className="text-blue-400 text-sm">New Folder</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+              
+              <View className="flex-row justify-end space-x-3">
+                <TouchableOpacity 
+                  className="bg-zinc-800 rounded-lg px-4 py-2"
+                  onPress={() => setShowNamingModal(false)}
+                >
+                  <Text className="text-white">Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  className="bg-blue-600 rounded-lg px-4 py-2"
+                  onPress={confirmJournalCreation}
+                >
+                  <Text className="text-white font-medium">Create</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
       </TouchableOpacity>
     </Modal>
   );
@@ -546,6 +1210,8 @@ export default function Home() {
       />
 
       <FolderModal />
+      <CreateJournalModal />
+      <NamingModal />
 
       <TouchableOpacity 
         activeOpacity={1} 
