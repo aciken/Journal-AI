@@ -4,8 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import TextIcon from '../../assets/Icons/TextIcon.png';
-import VoiceIcon from '../../assets/Icons/VoiceIcon.png';
+import JournalIcon from '../../assets/Icons/TextIcon.png';
 import { Easing } from 'react-native';
 import { Asset } from 'expo-asset';
 
@@ -14,17 +13,20 @@ export default function JournalPage() {
   const { id } = useLocalSearchParams();
   const [isBlurred, setIsBlurred] = useState(false);
   const [iconsLoaded, setIconsLoaded] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
   
   // Enhanced animations - simplified for elegance
   const blurAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
+  const addMenuBlurAnim = useRef(new Animated.Value(0)).current;
+  const addMenuContentAnim = useRef(new Animated.Value(0)).current;
   
   // Preload icons to prevent loading delay
   useEffect(() => {
     const preloadIcons = async () => {
       try {
         // Preload the icon images
-        await Asset.loadAsync([TextIcon, VoiceIcon]);
+        await Asset.loadAsync([JournalIcon]);
         setIconsLoaded(true);
       } catch (error) {
         console.error("Failed to preload icons:", error);
@@ -129,6 +131,73 @@ export default function JournalPage() {
     }
   };
   
+  // Toggle add menu function with animation
+  const toggleAddMenu = () => {
+    if (!showAddMenu) {
+      // Reset animation values for opening
+      addMenuBlurAnim.setValue(0);
+      addMenuContentAnim.setValue(0);
+      setShowAddMenu(true);
+      
+      // Open animation - start blur immediately
+      Animated.timing(addMenuBlurAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.ease),
+      }).start();
+      
+      // Then bring in the content
+      Animated.timing(addMenuContentAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.cubic),
+      }).start();
+    } else {
+      // For closing, animate first, then update state
+      Animated.parallel([
+        // Animate content out
+        Animated.timing(addMenuContentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        
+        // Delay the blur fadeout slightly
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.timing(addMenuBlurAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+            easing: Easing.in(Easing.ease),
+          }),
+        ]),
+      ]).start(() => {
+        setShowAddMenu(false);
+      });
+    }
+  };
+  
+  // Derived animations for add menu
+  const addMenuScale = addMenuContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
+  
+  const addMenuTranslateY = addMenuContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+  
+  // Background opacity for add menu
+  const addMenuBackdropOpacity = addMenuBlurAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.5],
+  });
+  
   // Navigate to Blur Test Page
   const navigateToBlurTest = () => {
     router.push('/BlurTestPage');
@@ -151,7 +220,6 @@ export default function JournalPage() {
       time: '9:30 AM',
       content: 'Started working on my new project. Feeling excited about the possibilities!',
       mood: 'happy',
-      type: 'text',
       folderId: '2'
     },
     {
@@ -161,7 +229,6 @@ export default function JournalPage() {
       time: '8:45 PM',
       content: 'Had dinner with friends. We talked about our future plans and shared some great memories.',
       mood: 'relaxed',
-      type: 'voice',
       folderId: '1'
     },
     {
@@ -171,7 +238,6 @@ export default function JournalPage() {
       time: '3:20 PM',
       content: 'Went for a long walk in the park. The autumn colors were beautiful.',
       mood: 'peaceful',
-      type: 'text',
       folderId: '1'
     },
   ], []);
@@ -184,7 +250,6 @@ export default function JournalPage() {
       time: '12:00 PM',
       content: 'Text asd agdf dfg asd...',
       mood: 'default',
-      type: 'text',
       folderId: null
     };
   }, [id, journalEntries]);
@@ -223,14 +288,14 @@ export default function JournalPage() {
                 <Ionicons name="chevron-back" size={24} color="#fff" />
               </TouchableOpacity>
               
-              {/* Center element with TextIcon, Journal Title, and chevron */}
+              {/* Center element with Journal Icon, Journal Title, and chevron */}
               <View className="flex-1 flex-row justify-center">
                 <TouchableOpacity 
                   className="flex-row items-center"
                   onPress={toggleMenu}
                 >
                   <Image 
-                    source={entry.type === 'voice' ? VoiceIcon : TextIcon} 
+                    source={JournalIcon} 
                     className="w-7 h-7 mr-2"
                     resizeMode="contain"
                   />
@@ -241,9 +306,9 @@ export default function JournalPage() {
               
               <TouchableOpacity 
                 style={{ width: 24 }}
-                onPress={navigateToBlurTest}
+                onPress={toggleAddMenu}
               >
-                <Ionicons name="pencil-outline" size={20} color="#a8a29e" />
+                <Ionicons name="add" size={24} color="#a8a29e" />
               </TouchableOpacity>
             </View>
           </View>
@@ -393,16 +458,13 @@ export default function JournalPage() {
                     </View>
                   </View>
                   
-                  {/* Journal Type Options - Preloaded images */}
+                  {/* Journal Options - Simplified to a single journal type */}
                   <View className="w-full space-y-5 mb-8">
-                    {/* Text Journal Option */}
-                    <TouchableOpacity 
-                      className="flex-row items-center"
-                      onPress={() => console.log('Selected Text Journal')}
-                    >
+                    {/* Journal Option */}
+                    <View className="flex-row items-center">
                       <View className="mr-3">
                         <Image 
-                          source={TextIcon} 
+                          source={JournalIcon} 
                           className="h-12 w-12"
                           resizeMode="contain"
                           // Add default placeholder color while loading
@@ -411,43 +473,10 @@ export default function JournalPage() {
                       </View>
                       
                       <View className="flex-1">
-                        <Text className="text-white text-lg font-semibold">Text Journal</Text>
-                        <Text className="text-zinc-400 text-sm">Write to your journal</Text>
+                        <Text className="text-white text-lg font-semibold">Journal</Text>
+                        <Text className="text-zinc-400 text-sm">Write or record your thoughts</Text>
                       </View>
-                      
-                      {entry.type === 'text' ? (
-                        <View className="bg-blue-500 rounded-full h-5 w-5 items-center justify-center">
-                          <Ionicons name="checkmark" size={14} color="#fff" />
-                        </View>
-                      ) : null}
-                    </TouchableOpacity>
-                    
-                    {/* Voice Journal Option */}
-                    <TouchableOpacity 
-                      className="flex-row items-center"
-                      onPress={() => console.log('Selected Voice Journal')}
-                    >
-                      <View className="mr-3">
-                        <Image 
-                          source={VoiceIcon} 
-                          className="h-12 w-12"
-                          resizeMode="contain"
-                          // Add default placeholder color while loading
-                          style={{ backgroundColor: 'transparent' }}
-                        />
-                      </View>
-                      
-                      <View className="flex-1">
-                        <Text className="text-white text-lg font-semibold">Voice Journal</Text>
-                        <Text className="text-zinc-400 text-sm">Speak to your journal</Text>
-                      </View>
-                      
-                      {entry.type === 'voice' ? (
-                        <View className="bg-green-500 rounded-full h-5 w-5 items-center justify-center">
-                          <Ionicons name="checkmark" size={14} color="#fff" />
-                        </View>
-                      ) : null}
-                    </TouchableOpacity>
+                    </View>
                   </View>
                   
                   {/* Additional Options */}
@@ -494,6 +523,164 @@ export default function JournalPage() {
                         <Ionicons name="trash-outline" size={20} color="#f87171" />
                       </View>
                       <Text className="text-red-400 text-base">Delete journal</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              </SafeAreaView>
+            </TouchableOpacity>
+          </Modal>
+          
+          {/* Add Content Menu Modal */}
+          <Modal
+            visible={showAddMenu}
+            transparent={true}
+            animationType="none"
+            onRequestClose={() => {
+              if (showAddMenu) {
+                toggleAddMenu();
+                return true;
+              }
+              return false;
+            }}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={{ flex: 1 }}
+              onPress={toggleAddMenu}
+            >
+              {/* Beautiful blur animation - same as title modal */}
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0, 
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  opacity: addMenuBackdropOpacity,
+                }}
+              />
+              
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0, 
+                  right: 0,
+                  bottom: 0,
+                  opacity: addMenuBlurAnim,
+                }}
+              >
+                <BlurView
+                  intensity={50}
+                  tint="dark"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                  }}
+                />
+              </Animated.View>
+              
+              {/* Menu container - elegant animations like title modal */}
+              <SafeAreaView className="flex-1">
+                <Animated.View 
+                  className="flex-1 justify-start items-center px-6 pt-20"
+                  style={{
+                    opacity: addMenuContentAnim,
+                    transform: [
+                      { translateY: addMenuTranslateY },
+                      { scale: addMenuScale },
+                    ]
+                  }}
+                >
+                  {/* Add to Journal Title Container */}
+                  <View className="w-full mb-8">
+                    <View className="flex-row items-center justify-center">
+                      <Text className="text-white text-xl font-medium">Add Content</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Add Options - Styled like the journal options */}
+                  <View className="w-full space-y-5 mb-8">
+                    {/* Text Option */}
+                    <TouchableOpacity 
+                      className="flex-row items-center"
+                      onPress={() => {
+                        toggleAddMenu();
+                        console.log('Add text');
+                      }}
+                    >
+                      <View className="bg-zinc-800 rounded-full p-2 mr-3">
+                        <Ionicons name="text-outline" size={20} color="#d6d3d1" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-base">Add Text</Text>
+                        <Text className="text-zinc-400 text-xs">Write more thoughts</Text>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {/* Voice Option */}
+                    <TouchableOpacity 
+                      className="flex-row items-center"
+                      onPress={() => {
+                        toggleAddMenu();
+                        console.log('Add voice recording');
+                      }}
+                    >
+                      <View className="bg-zinc-800 rounded-full p-2 mr-3">
+                        <Ionicons name="mic-outline" size={20} color="#d6d3d1" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-base">Voice Recording</Text>
+                        <Text className="text-zinc-400 text-xs">Record your thoughts</Text>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {/* Video Option */}
+                    <TouchableOpacity 
+                      className="flex-row items-center"
+                      onPress={() => {
+                        toggleAddMenu();
+                        console.log('Add video');
+                      }}
+                    >
+                      <View className="bg-zinc-800 rounded-full p-2 mr-3">
+                        <Ionicons name="videocam-outline" size={20} color="#d6d3d1" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-base">Add Video</Text>
+                        <Text className="text-zinc-400 text-xs">Record a video clip</Text>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {/* Image Option */}
+                    <TouchableOpacity 
+                      className="flex-row items-center"
+                      onPress={() => {
+                        toggleAddMenu();
+                        console.log('Add image');
+                      }}
+                    >
+                      <View className="bg-zinc-800 rounded-full p-2 mr-3">
+                        <Ionicons name="image-outline" size={20} color="#d6d3d1" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-base">Add Image</Text>
+                        <Text className="text-zinc-400 text-xs">Include a photo</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Cancel Option */}
+                  <View className="w-full space-y-4 border-t border-zinc-800 pt-6">
+                    <TouchableOpacity 
+                      className="flex-row items-center"
+                      onPress={toggleAddMenu}
+                    >
+                      <View className="bg-zinc-800 rounded-full p-2 mr-3">
+                        <Ionicons name="close-outline" size={20} color="#a8a29e" />
+                      </View>
+                      <Text className="text-white text-base">Cancel</Text>
                     </TouchableOpacity>
                   </View>
                 </Animated.View>

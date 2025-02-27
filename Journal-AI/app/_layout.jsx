@@ -8,8 +8,9 @@ export default function Layout() {
           }}>
             <Stack.Screen name="index" />  
             <Stack.Screen name="(Main)" />
-            <Stack.Screen name="Modal/Settings" 
+            <Stack.Screen name="Modal" 
               options={{
+                headerShown: false,
                 presentation: 'modal',
                 animation: 'slide_from_bottom'
               }}

@@ -35,7 +35,6 @@ const sampleJournalEntries = [
     time: '9:30 AM',
     content: 'Started working on my new project. Feeling excited about the possibilities!',
     mood: 'happy',
-    type: 'text',
     folderId: '2'
   },
   {
@@ -45,7 +44,6 @@ const sampleJournalEntries = [
     time: '8:45 PM',
     content: 'Had dinner with friends. We talked about our future plans and shared some great memories.',
     mood: 'relaxed',
-    type: 'voice',
     folderId: '1'
   },
   {
@@ -55,7 +53,6 @@ const sampleJournalEntries = [
     time: '3:20 PM',
     content: 'Went for a long walk in the park. The autumn colors were beautiful.',
     mood: 'peaceful',
-    type: 'text',
     folderId: '1'
   },
   {
@@ -65,7 +62,6 @@ const sampleJournalEntries = [
     time: '11:15 AM',
     content: 'Brainstormed some new project ideas. I think the AI journal concept has a lot of potential.',
     mood: 'happy',
-    type: 'text',
     folderId: '4'
   },
   {
@@ -75,7 +71,6 @@ const sampleJournalEntries = [
     time: '2:00 PM',
     content: 'Met with the client to discuss project requirements. They seem excited about our approach.',
     mood: 'relaxed',
-    type: 'text',
     folderId: '2'
   },
 ];
@@ -426,14 +421,6 @@ export default function AskJournal() {
       }
     };
     
-    const getEntryTypeIcon = (type) => {
-      switch(type) {
-        case 'voice': return 'mic-outline';
-        case 'image': return 'image-outline';
-        default: return 'document-text-outline';
-      }
-    };
-    
     const getFolderColor = (folderId) => {
       const folder = folders.find(f => f.id === folderId);
       return folder ? folder.color : '#a8a29e';
@@ -467,7 +454,7 @@ export default function AskJournal() {
             className="w-8 h-8 rounded-full justify-center items-center"
             style={{ backgroundColor: `${getFolderColor(item.folderId)}20` }}
           >
-            <Ionicons name={getEntryTypeIcon(item.type)} size={16} color={getFolderColor(item.folderId)} />
+            <Ionicons name="document-text-outline" size={16} color={getFolderColor(item.folderId)} />
           </View>
         </View>
         

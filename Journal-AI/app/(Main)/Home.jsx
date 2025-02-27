@@ -3,11 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOfWeek, subWeeks, subDays, startOfYear, subMonths } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import TextIcon from '../../assets/Icons/TextIcon.png';
-import VoiceIcon from '../../assets/Icons/VoiceIcon.png';
+import JournalIcon from '../../assets/Icons/TextIcon.png';
 import { Image } from 'react-native';
 
 export default function Home() {
@@ -20,163 +19,84 @@ export default function Home() {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showNamingModal, setShowNamingModal] = useState(false);
+  const [showOptionsOverlay, setShowOptionsOverlay] = useState(false);
   const [newJournalType, setNewJournalType] = useState('');
-  const [newJournalName, setNewJournalName] = useState('');
   const [folderSelectionAnim] = useState(new Animated.Value(0));
   
   // Animation values for folder modal
   const blurAnim = useRef(new Animated.Value(0)).current;
   const modalContentAnim = useRef(new Animated.Value(0)).current;
   
-  // Animation values for naming modal
-  const namingBlurAnim = useRef(new Animated.Value(0)).current;
-  const namingModalContentAnim = useRef(new Animated.Value(0)).current;
-  
   // Animation values for create modal
   const createBlurAnim = useRef(new Animated.Value(0)).current;
   const createModalContentAnim = useRef(new Animated.Value(0)).current;
   
-  // Animate folder modal
-  useEffect(() => {
-    if (showFolderModal) {
-      // Reset animation values
-      blurAnim.setValue(0);
-      modalContentAnim.setValue(0);
-      
-      // Open animation - start blur immediately
-      Animated.timing(blurAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
-      }).start();
-      
-      // Then bring in the content
-      Animated.timing(modalContentAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      }).start();
-    } else if (blurAnim._value > 0) { // Only run closing animation if modal was open
-      // Closing animation
-      Animated.parallel([
-        // Animate content out
-        Animated.timing(modalContentAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-          easing: Easing.in(Easing.cubic),
-        }),
-        
-        // Delay the blur fadeout slightly
-        Animated.sequence([
-          Animated.delay(50),
-          Animated.timing(blurAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: false,
-            easing: Easing.in(Easing.ease),
-          }),
-        ]),
-      ]).start();
-    }
-  }, [showFolderModal]);
+  // Animation values for calendar modal
+  const calendarBlurAnim = useRef(new Animated.Value(0)).current;
+  const calendarContentAnim = useRef(new Animated.Value(0)).current;
   
-  // Animate naming modal
-  useEffect(() => {
-    if (showNamingModal) {
-      // Reset animation values
-      namingBlurAnim.setValue(0);
-      namingModalContentAnim.setValue(0);
-      
-      // Open animation - start blur immediately
-      Animated.timing(namingBlurAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
-      }).start();
-      
-      // Then bring in the content
-      Animated.timing(namingModalContentAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      }).start();
-    } else if (namingBlurAnim._value > 0) { // Only run closing animation if modal was open
-      // Closing animation
-      Animated.parallel([
-        // Animate content out
-        Animated.timing(namingModalContentAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-          easing: Easing.in(Easing.cubic),
-        }),
-        
-        // Delay the blur fadeout slightly
-        Animated.sequence([
-          Animated.delay(50),
-          Animated.timing(namingBlurAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: false,
-            easing: Easing.in(Easing.ease),
-          }),
-        ]),
-      ]).start();
-    }
-  }, [showNamingModal]);
+  // Animation values for options overlay
+  const optionsBlurAnim = useRef(new Animated.Value(0)).current;
+  const optionsContentAnim = useRef(new Animated.Value(0)).current;
   
-  // Animate create modal
-  useEffect(() => {
-    if (showCreateModal) {
-      // Reset animation values
-      createBlurAnim.setValue(0);
-      createModalContentAnim.setValue(0);
-      
-      // Open animation - start blur immediately
-      Animated.timing(createBlurAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-        easing: Easing.out(Easing.ease),
-      }).start();
-      
-      // Then bring in the content
-      Animated.timing(createModalContentAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      }).start();
-    } else if (createBlurAnim._value > 0) { // Only run closing animation if modal was open
-      // Closing animation
+  // Toggle folder modal
+  const toggleFolderModal = () => {
+    setShowFolderModal(!showFolderModal);
+  };
+  
+  // Toggle options overlay
+  const toggleOptionsOverlay = () => {
+    if (showOptionsOverlay) {
+      // Animate out first, then hide the overlay
       Animated.parallel([
-        // Animate content out
-        Animated.timing(createModalContentAnim, {
+        // Animate content out with a slight upward motion
+        Animated.timing(optionsContentAnim, {
           toValue: 0,
           duration: 250,
           useNativeDriver: true,
           easing: Easing.in(Easing.cubic),
         }),
-        
         // Delay the blur fadeout slightly
         Animated.sequence([
           Animated.delay(50),
-          Animated.timing(createBlurAnim, {
+          Animated.timing(optionsBlurAnim, {
             toValue: 0,
             duration: 300,
             useNativeDriver: false,
             easing: Easing.in(Easing.ease),
           }),
         ]),
+      ]).start(() => {
+        // Only update state after animation completes
+        setShowOptionsOverlay(false);
+      });
+    } else {
+      // Reset animation values first
+      optionsBlurAnim.setValue(0);
+      optionsContentAnim.setValue(0);
+      
+      // Show first, then animate in
+      setShowOptionsOverlay(true);
+      
+      // Animate in
+      Animated.parallel([
+        // Start blur immediately
+        Animated.timing(optionsBlurAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+          easing: Easing.out(Easing.ease),
+        }),
+        // Bring in content with a slight bounce
+        Animated.timing(optionsContentAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
       ]).start();
     }
-  }, [showCreateModal]);
+  };
   
   // Animation for folder selection
   const animateFolderSelection = (folderId) => {
@@ -209,86 +129,13 @@ export default function Home() {
   // Create new journal entry
   const createNewJournal = (type) => {
     setNewJournalType(type);
-    setNewJournalName('');
-    
-    // First animate the create modal closing
-    Animated.parallel([
-      // Animate content out
-      Animated.timing(createModalContentAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-        easing: Easing.in(Easing.cubic),
-      }),
-      
-      // Delay the blur fadeout slightly
-      Animated.sequence([
-        Animated.delay(50),
-        Animated.timing(createBlurAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: false,
-          easing: Easing.in(Easing.ease),
-        }),
-      ]),
-    ]).start(() => {
-      // After animation completes, close create modal and open naming modal
-      setShowCreateModal(false);
-      setShowNamingModal(true);
-    });
-  };
-  
-  // Confirm journal creation and navigate
-  const confirmJournalCreation = () => {
-    if (!newJournalName.trim()) {
-      // Default name if empty
-      setNewJournalName(`New ${newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal`);
-    }
-    
-    // Create a new journal entry
-    const newEntry = {
-      id: Date.now().toString(),
-      title: newJournalName.trim() || `New ${newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal`,
-      date: 'Today',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      content: '',
-      mood: 'default',
-      type: newJournalType,
-      folderId: selectedFolder
-    };
-    
-    // Add to journal entries
-    setJournalEntries([newEntry, ...journalEntries]);
-    
-    // First animate the naming modal closing
-    Animated.parallel([
-      // Animate content out
-      Animated.timing(namingModalContentAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-        easing: Easing.in(Easing.cubic),
-      }),
-      
-      // Delay the blur fadeout slightly
-      Animated.sequence([
-        Animated.delay(50),
-        Animated.timing(namingBlurAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: false,
-          easing: Easing.in(Easing.ease),
-        }),
-      ]),
-    ]).start(() => {
-      // After animation completes, close naming modal and navigate
-      setShowNamingModal(false);
-      
-      // Navigate to the journal page
-      router.push({
-        pathname: "/JournalPage",
-        params: { id: newEntry.id }
-      });
+    // Navigate to the CreateJournal modal page
+    router.push({
+      pathname: "/Modal/CreateJournal",
+      params: { 
+        folderId: selectedFolder,
+        folders: JSON.stringify(folders)
+      }
     });
   };
   
@@ -326,19 +173,24 @@ export default function Home() {
     outputRange: [0, 0.5],
   });
   
-  // Derived animations for naming modal
-  const namingModalScale = namingModalContentAnim.interpolate({
+  // Derived animations for options overlay
+  const optionsScale = optionsContentAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0.95, 1],
   });
   
-  const namingModalTranslateY = namingModalContentAnim.interpolate({
+  const optionsOpacity = optionsContentAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  
+  const optionsTranslateY = optionsContentAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [20, 0],
   });
   
-  // Background opacity for naming modal
-  const namingBackdropOpacity = namingBlurAnim.interpolate({
+  // Background opacity for options overlay
+  const optionsBackdropOpacity = optionsBlurAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 0.5],
   });
@@ -355,7 +207,6 @@ export default function Home() {
       time: '9:30 AM',
       content: 'Started working on my new project. Feeling excited about the possibilities!',
       mood: 'happy',
-      type: 'text',
       folderId: '2'
     },
     {
@@ -365,7 +216,6 @@ export default function Home() {
       time: '8:45 PM',
       content: 'Had dinner with friends. We talked about our future plans and shared some great memories.',
       mood: 'relaxed',
-      type: 'voice',
       folderId: '1'
     },
     {
@@ -375,7 +225,6 @@ export default function Home() {
       time: '3:20 PM',
       content: 'Went for a long walk in the park. The autumn colors were beautiful.',
       mood: 'peaceful',
-      type: 'text',
       folderId: '1'
     },
   ]);
@@ -392,7 +241,6 @@ export default function Home() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       content: inputText,
       mood: 'default',
-      type: 'text',
       folderId: selectedFolder
     };
     
@@ -474,54 +322,10 @@ export default function Home() {
     const [showCalendar, setShowCalendar] = useState(false);
     const today = new Date();
     
-    const calendarHeight = useRef(new Animated.Value(0)).current;
-    const calendarOpacity = useRef(new Animated.Value(0)).current;
-    
-    // Folder selection animation scale
-    const folderSelectionScale = folderSelectionAnim.interpolate({
-      inputRange: [0, 0.5, 1],
-      outputRange: [1, 1.1, 1],
-    });
-    
-    // Folder selection animation color
-    const folderSelectionOpacity = folderSelectionAnim.interpolate({
-      inputRange: [0, 0.5, 1],
-      outputRange: [1, 0.7, 1],
-    });
-    
-    useEffect(() => {
-      if (showCalendar) {
-        Animated.parallel([
-          Animated.timing(calendarHeight, {
-            toValue: 1,
-            duration: 300,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false
-          }),
-          Animated.timing(calendarOpacity, {
-            toValue: 1,
-            duration: 250,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false
-          })
-        ]).start();
-      } else {
-        Animated.parallel([
-          Animated.timing(calendarHeight, {
-            toValue: 0,
-            duration: 250,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: false
-          }),
-          Animated.timing(calendarOpacity, {
-            toValue: 0,
-            duration: 200,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: false
-          })
-        ]).start();
-      }
-    }, [showCalendar]);
+    // Toggle calendar modal with animation
+    const toggleCalendarModal = () => {
+      setShowCalendar(!showCalendar);
+    };
     
     const generateCalendarDays = () => {
       const monthStart = startOfMonth(selectedDate);
@@ -534,10 +338,13 @@ export default function Home() {
       return [...paddingDays, ...daysInMonth];
     };
     
-    const quickDates = [
-      { label: 'Today', date: today },
-      { label: 'Yesterday', date: new Date(today.setDate(today.getDate() - 1)) },
-      { label: 'This Week', date: new Date(today.setDate(today.getDate() - today.getDay())) },
+    // Simplified date options
+    const dateOptions = [
+      { label: 'Today', date: new Date() },
+      { label: 'Yesterday', date: subDays(new Date(), 1) },
+      { label: 'This Week', date: startOfWeek(new Date()) },
+      { label: 'This Month', date: startOfMonth(new Date()) },
+      { label: 'Last Month', date: startOfMonth(subMonths(new Date(), 1)) },
     ];
     
     const getCurrentFolder = () => {
@@ -556,51 +363,44 @@ export default function Home() {
       <View className="mb-6">
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
-            <Text className="text-white text-2xl font-bold mr-2">Journal</Text>
-            <Animated.View
-              style={{
-                transform: [{ scale: folderSelectionScale }],
-                opacity: folderSelectionOpacity,
-              }}
+            <Text className="text-white text-2xl font-bold mr-2">JourneyAI</Text>
+            <TouchableOpacity 
+              className="flex-row items-center bg-zinc-800/40 rounded-lg px-2 py-1"
+              onPress={toggleFolderModal}
+              style={selectedFolder ? { borderLeftWidth: 3, borderLeftColor: getFolderColor(), paddingLeft: 6 } : {}}
             >
-              <TouchableOpacity 
-                className="flex-row items-center bg-zinc-800/40 rounded-lg px-2 py-1"
-                onPress={() => setShowFolderModal(true)}
-                style={selectedFolder ? { borderLeftWidth: 3, borderLeftColor: getFolderColor(), paddingLeft: 6 } : {}}
-              >
-                <Text className="text-gray-300 text-sm mr-1">{getCurrentFolder()}</Text>
-                <Ionicons name="chevron-down" size={14} color="#a8a29e" />
-              </TouchableOpacity>
-            </Animated.View>
+              <Text className="text-gray-300 text-sm mr-1">{getCurrentFolder()}</Text>
+              <Ionicons name="chevron-down" size={14} color="#a8a29e" />
+            </TouchableOpacity>
           </View>
           
           <View className="flex-row">
             <TouchableOpacity 
               className="bg-zinc-800/80 rounded-full p-2 mr-2"
-              onPress={() => setShowFolderModal(true)}
+              onPress={toggleFolderModal}
             >
               <Ionicons name="folder-outline" size={20} color="#d6d3d1" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               className="bg-zinc-800/80 rounded-full p-2 mr-2"
-              onPress={() => setShowCreateModal(true)}
+              onPress={() => createNewJournal('journal')}
             >
               <Ionicons name="add" size={20} color="#d6d3d1" />
             </TouchableOpacity>
             
             <TouchableOpacity 
               className="bg-zinc-800/80 rounded-full p-2"
-              onPress={() => router.push('/Modal/Settings')}
+              onPress={toggleOptionsOverlay}
             >
-              <Ionicons name="settings-outline" size={20} color="#d6d3d1" />
+              <Ionicons name="ellipsis-horizontal" size={20} color="#d6d3d1" />
             </TouchableOpacity>
           </View>
         </View>
         
         <TouchableOpacity 
           className="flex-row items-center justify-between bg-zinc-800/40 rounded-lg p-3 mb-4"
-          onPress={() => setShowCalendar(!showCalendar)}
+          onPress={toggleCalendarModal}
         >
           <View className="flex-row items-center">
             <Ionicons name="calendar-outline" size={18} color="#d6d3d1" />
@@ -608,120 +408,127 @@ export default function Home() {
               {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </Text>
           </View>
-          <Animated.View
-            style={{
-              transform: [{
-                rotate: calendarHeight.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '180deg']
-                })
-              }]
-            }}
-          >
-            <Ionicons name="chevron-down" size={18} color="#d6d3d1" />
-          </Animated.View>
+          <Ionicons name="chevron-down" size={18} color="#d6d3d1" />
         </TouchableOpacity>
         
-        <Animated.View 
-          style={{
-            opacity: calendarOpacity,
-            maxHeight: calendarHeight.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 350]
-            }),
-            overflow: 'hidden',
-            marginBottom: calendarHeight.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 16]
-            })
-          }}
+        {/* Simplified Calendar Modal */}
+        <Modal
+          visible={showCalendar}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={toggleCalendarModal}
         >
-          <View className="bg-zinc-800/40 rounded-lg p-4">
-            <View className="flex-row justify-between items-center mb-4">
-              <TouchableOpacity
-                onPress={() => {
-                  const prevMonth = new Date(selectedDate);
-                  prevMonth.setMonth(prevMonth.getMonth() - 1);
-                  setSelectedDate(prevMonth);
-                }}
-              >
-                <Ionicons name="chevron-back" size={20} color="#d6d3d1" />
-              </TouchableOpacity>
-              
-              <Text className="text-white font-medium">
-                {format(selectedDate, 'MMMM yyyy')}
-              </Text>
-              
-              <TouchableOpacity
-                onPress={() => {
-                  const nextMonth = new Date(selectedDate);
-                  nextMonth.setMonth(nextMonth.getMonth() + 1);
-                  setSelectedDate(nextMonth);
-                }}
-              >
-                <Ionicons name="chevron-forward" size={20} color="#d6d3d1" />
-              </TouchableOpacity>
-            </View>
-            
-            <View className="flex-row justify-between mb-2">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                <Text key={index} className="text-gray-400 text-center" style={{ width: 32 }}>
-                  {day}
-                </Text>
-              ))}
-            </View>
-            
-            <View className="flex-row flex-wrap">
-              {generateCalendarDays().map((date, index) => {
-                if (!date) {
-                  return <View key={`empty-${index}`} style={{ width: 32, height: 32, margin: 2 }} />;
-                }
-                
-                const isToday = isSameDay(date, new Date());
-                const isSelected = isSameDay(date, selectedDate);
-                const hasEntries = journalEntries.some(entry => {
-                  if (entry.date === 'Today' && isToday) return true;
-                  return false;
-                });
-                
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setSelectedDate(date)}
-                    className={`items-center justify-center rounded-full m-1 ${
-                      isSelected ? 'bg-blue-500' : isToday ? 'bg-zinc-700' : ''
-                    }`}
-                    style={{ width: 32, height: 32 }}
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}>
+            <BlurView intensity={30} tint="dark" style={{ flex: 1 }}>
+              <SafeAreaView className="flex-1">
+                <View className="flex-1 justify-start items-center px-6 pt-10">
+                  {/* Calendar Title */}
+                  <View className="w-full mb-6 flex-row justify-between items-center">
+                    <Text className="text-white text-xl font-medium">Select Date</Text>
+                    <TouchableOpacity onPress={toggleCalendarModal}>
+                      <Ionicons name="close" size={24} color="#d6d3d1" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Calendar View */}
+                  <View className="w-full bg-zinc-800/80 rounded-xl p-4 mb-4">
+                    <View className="flex-row justify-between items-center mb-4">
+                      <TouchableOpacity
+                        onPress={() => {
+                          const prevMonth = new Date(selectedDate);
+                          prevMonth.setMonth(prevMonth.getMonth() - 1);
+                          setSelectedDate(prevMonth);
+                        }}
+                        className="p-2"
+                      >
+                        <Ionicons name="chevron-back" size={20} color="#d6d3d1" />
+                      </TouchableOpacity>
+                      
+                      <Text className="text-white font-medium text-lg">
+                        {format(selectedDate, 'MMMM yyyy')}
+                      </Text>
+                      
+                      <TouchableOpacity
+                        onPress={() => {
+                          const nextMonth = new Date(selectedDate);
+                          nextMonth.setMonth(nextMonth.getMonth() + 1);
+                          setSelectedDate(nextMonth);
+                        }}
+                        className="p-2"
+                      >
+                        <Ionicons name="chevron-forward" size={20} color="#d6d3d1" />
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <View className="flex-row justify-between mb-2">
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                        <Text key={index} className="text-gray-400 text-center" style={{ width: 36 }}>
+                          {day}
+                        </Text>
+                      ))}
+                    </View>
+                    
+                    <View className="flex-row flex-wrap">
+                      {generateCalendarDays().map((date, index) => {
+                        if (!date) {
+                          return <View key={`empty-${index}`} style={{ width: 36, height: 36, margin: 2 }} />;
+                        }
+                        
+                        const isToday = isSameDay(date, new Date());
+                        const isSelected = isSameDay(date, selectedDate);
+                        
+                        return (
+                          <TouchableOpacity
+                            key={index}
+                            onPress={() => setSelectedDate(date)}
+                            className={`items-center justify-center rounded-full m-1 ${
+                              isSelected ? 'bg-blue-500' : isToday ? 'bg-zinc-700' : ''
+                            }`}
+                            style={{ width: 36, height: 36 }}
+                          >
+                            <Text 
+                              className={`text-center ${
+                                isSelected ? 'text-white font-bold' : 
+                                isToday ? 'text-white' : 'text-gray-300'
+                              }`}
+                            >
+                              {date.getDate()}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                  
+                  {/* Quick Date Options */}
+                  <View className="w-full bg-zinc-800/80 rounded-xl p-4 mb-4">
+                    <Text className="text-white font-medium mb-3">Quick Select</Text>
+                    
+                    <View className="flex-row flex-wrap">
+                      {dateOptions.map((option, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          onPress={() => setSelectedDate(option.date)}
+                          className="bg-zinc-700/60 rounded-full px-3 py-1.5 mr-2 mb-2"
+                        >
+                          <Text className="text-white text-sm">{option.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  
+                  {/* Confirm Button */}
+                  <TouchableOpacity 
+                    className="w-full bg-blue-600 rounded-xl py-3 items-center"
+                    onPress={toggleCalendarModal}
                   >
-                    <Text 
-                      className={`text-center ${
-                        isSelected ? 'text-white font-bold' : 
-                        isToday ? 'text-white' : 'text-gray-300'
-                      }`}
-                    >
-                      {date.getDate()}
-                    </Text>
-                    {hasEntries && (
-                      <View className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-400" />
-                    )}
+                    <Text className="text-white font-medium">Confirm</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-            
-            <View className="flex-row mt-4 pt-3 border-t border-zinc-700">
-              {quickDates.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setSelectedDate(item.date)}
-                  className="bg-zinc-700/60 rounded-full px-3 py-1 mr-2"
-                >
-                  <Text className="text-white text-xs">{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                </View>
+              </SafeAreaView>
+            </BlurView>
           </View>
-        </Animated.View>
+        </Modal>
       </View>
     );
   };
@@ -738,10 +545,6 @@ export default function Home() {
       }
     };
 
-    const getEntryTypeIcon = (type) => {
-      return type === 'voice' ? 'mic-outline' : 'document-text-outline';
-    };
-    
     const getFolderColor = (folderId) => {
       if (!folderId) return null;
       const folder = folders.find(f => f.id === folderId);
@@ -769,7 +572,7 @@ export default function Home() {
           <View className="flex-row justify-between items-center">
             <Text className="text-white font-medium text-base">{item.title}</Text>
           <View className="flex-row items-center">
-              <Ionicons name={getEntryTypeIcon(item.type)} size={14} color="#a8a29e" />
+              <Ionicons name="document-text-outline" size={14} color="#a8a29e" />
               <View className="w-1 h-1 mx-2 bg-zinc-700 rounded-full" />
               <Ionicons name={getMoodIcon(item.mood)} size={14} color="#a8a29e" />
           </View>
@@ -843,540 +646,214 @@ export default function Home() {
     <Modal
       visible={showFolderModal}
       transparent={true}
-      animationType="none"
-      onRequestClose={() => {
-        // Animate closing when back button is pressed
-        Animated.parallel([
-          // Animate content out
-          Animated.timing(modalContentAnim, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-            easing: Easing.in(Easing.cubic),
-          }),
-          
-          // Delay the blur fadeout slightly
-          Animated.sequence([
-            Animated.delay(50),
-            Animated.timing(blurAnim, {
-              toValue: 0,
-              duration: 300,
-              useNativeDriver: false,
-              easing: Easing.in(Easing.ease),
-            }),
-          ]),
-        ]).start(() => {
-          setShowFolderModal(false);
-        });
-      }}
+      animationType="fade"
+      onRequestClose={toggleFolderModal}
     >
-      <TouchableOpacity 
-        activeOpacity={1}
-        style={{ flex: 1 }}
-        onPress={() => {
-          // Animate closing when backdrop is pressed
-          Animated.parallel([
-            // Animate content out
-            Animated.timing(modalContentAnim, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-              easing: Easing.in(Easing.cubic),
-            }),
-            
-            // Delay the blur fadeout slightly
-            Animated.sequence([
-              Animated.delay(50),
-              Animated.timing(blurAnim, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: false,
-                easing: Easing.in(Easing.ease),
-              }),
-            ]),
-          ]).start(() => {
-            setShowFolderModal(false);
-          });
-        }}
-      >
-        {/* Dark overlay with animated opacity */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0, 
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            opacity: backdropOpacity,
-          }}
-        />
-        
-        {/* Blur effect */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0, 
-            right: 0,
-            bottom: 0,
-            opacity: blurAnim,
-          }}
-        >
-          <BlurView
-            intensity={50}
-            tint="dark"
-            style={{
-              width: '100%',
-              height: '100%',
-            }}
-          />
-        </Animated.View>
-        
-        {/* Modal content with animation */}
-        <Animated.View 
-          className="flex-1 justify-start items-center px-6"
-          style={{
-            opacity: modalContentAnim,
-            transform: [
-              { translateY: modalTranslateY },
-              { scale: modalScale },
-            ]
-          }}
-        >
-          <View className="bg-zinc-900 rounded-xl overflow-hidden w-full mt-24">
-            <View className="border-b border-zinc-800 p-4">
-              <Text className="text-white text-lg font-medium">Folders</Text>
-            </View>
-            
-            <FlatList
-              data={folders}
-              keyExtractor={item => item.id}
-              renderItem={({ item }) => (
-      <TouchableOpacity 
-                  className="flex-row items-center p-4 border-b border-zinc-800"
-                  onPress={() => animateFolderSelection(item.id)}
-                >
-                  <View 
-                    className="w-3 h-3 rounded-full mr-3" 
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <Text className="text-white flex-1">{item.name}</Text>
-                  {selectedFolder === item.id && (
-                    <Ionicons name="checkmark" size={20} color="#d6d3d1" />
-                  )}
-                </TouchableOpacity>
-              )}
-              ListFooterComponent={
-                <TouchableOpacity 
-                  className="flex-row items-center p-4"
-        onPress={() => {
-                    console.log('Create new folder');
-                    setShowFolderModal(false);
-        }}
-      >
-                  <View className="w-6 h-6 rounded-full bg-zinc-800 items-center justify-center mr-2">
-                    <Ionicons name="add" size={16} color="#d6d3d1" />
-                  </View>
-                  <Text className="text-blue-400">Create New Folder</Text>
-      </TouchableOpacity>
-              }
-            />
-    </View>
-        </Animated.View>
-      </TouchableOpacity>
-    </Modal>
-  );
-  
-  // Create Journal Modal
-  const CreateJournalModal = () => (
-    <Modal
-      visible={showCreateModal}
-      transparent={true}
-      animationType="none"
-      onRequestClose={() => {
-        // Animate closing when back button is pressed
-        Animated.parallel([
-          // Animate content out
-          Animated.timing(createModalContentAnim, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-            easing: Easing.in(Easing.cubic),
-          }),
-          
-          // Delay the blur fadeout slightly
-          Animated.sequence([
-            Animated.delay(50),
-            Animated.timing(createBlurAnim, {
-              toValue: 0,
-              duration: 300,
-              useNativeDriver: false,
-              easing: Easing.in(Easing.ease),
-            }),
-          ]),
-        ]).start(() => {
-          setShowCreateModal(false);
-        });
-      }}
-    >
-      <TouchableOpacity 
-        activeOpacity={1}
-        style={{ flex: 1 }}
-        onPress={() => {
-          // Animate closing when backdrop is pressed
-          Animated.parallel([
-            // Animate content out
-            Animated.timing(createModalContentAnim, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-              easing: Easing.in(Easing.cubic),
-            }),
-            
-            // Delay the blur fadeout slightly
-            Animated.sequence([
-              Animated.delay(50),
-              Animated.timing(createBlurAnim, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: false,
-                easing: Easing.in(Easing.ease),
-              }),
-            ]),
-          ]).start(() => {
-            setShowCreateModal(false);
-          });
-        }}
-      >
-        {/* Dark overlay with animated opacity */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0, 
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            opacity: createBackdropOpacity,
-          }}
-        />
-        
-        {/* Blur effect */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0, 
-            right: 0,
-            bottom: 0,
-            opacity: createBlurAnim,
-          }}
-        >
-          <BlurView
-            intensity={50}
-            tint="dark"
-            style={{
-              width: '100%',
-              height: '100%',
-            }}
-          />
-        </Animated.View>
-        
-        {/* Modal content with animation */}
-        <Animated.View 
-          className="flex-1 justify-start items-center px-6"
-          style={{
-            opacity: createModalContentAnim,
-            transform: [
-              { translateY: createModalTranslateY },
-              { scale: createModalScale },
-            ]
-          }}
-        >
-          <View className="bg-zinc-900 rounded-xl overflow-hidden w-full mt-24">
-            <View className="border-b border-zinc-800 p-4">
-              <Text className="text-white text-lg font-medium">Create New Journal</Text>
-            </View>
-            
-            <View className="p-4 space-y-5">
-              {/* Text Journal Option */}
-              <TouchableOpacity 
-                className="flex-row items-center"
-                onPress={() => createNewJournal('text')}
-              >
-                <View className="mr-3">
-                  <Image 
-                    source={TextIcon} 
-                    className="h-12 w-12"
-                    resizeMode="contain"
-                    style={{ backgroundColor: 'transparent' }}
-                  />
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}>
+        <BlurView intensity={30} tint="dark" style={{ flex: 1 }}>
+          <SafeAreaView className="flex-1">
+            <View className="flex-1 justify-start items-center px-6 pt-10">
+              <View className="bg-zinc-900 rounded-xl overflow-hidden w-full">
+                <View className="border-b border-zinc-800 p-4 flex-row justify-between items-center">
+                  <Text className="text-white text-lg font-medium">Select Folder</Text>
+                  <TouchableOpacity onPress={toggleFolderModal}>
+                    <Ionicons name="close" size={20} color="#d6d3d1" />
+                  </TouchableOpacity>
                 </View>
                 
-                <View className="flex-1">
-                  <Text className="text-white text-lg font-semibold">Text Journal</Text>
-                  <Text className="text-zinc-400 text-sm">Write to your journal</Text>
-                </View>
-              </TouchableOpacity>
-              
-              {/* Voice Journal Option */}
-              <TouchableOpacity 
-                className="flex-row items-center"
-                onPress={() => createNewJournal('voice')}
-              >
-                <View className="mr-3">
-                  <Image 
-                    source={VoiceIcon} 
-                    className="h-12 w-12"
-                    resizeMode="contain"
-                    style={{ backgroundColor: 'transparent' }}
-                  />
-                </View>
-                
-                <View className="flex-1">
-                  <Text className="text-white text-lg font-semibold">Voice Journal</Text>
-                  <Text className="text-zinc-400 text-sm">Speak to your journal</Text>
-                </View>
-              </TouchableOpacity>
-              
-              {/* Photo Journal Option */}
-              <TouchableOpacity 
-                className="flex-row items-center"
-                onPress={() => createNewJournal('photo')}
-              >
-                <View className="bg-zinc-800 rounded-full p-3 mr-3">
-                  <Ionicons name="image-outline" size={24} color="#d6d3d1" />
-                </View>
-                
-                <View className="flex-1">
-                  <Text className="text-white text-lg font-semibold">Photo Journal</Text>
-                  <Text className="text-zinc-400 text-sm">Add photos to your journal</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Animated.View>
-      </TouchableOpacity>
-    </Modal>
-  );
-
-  // Naming Modal
-  const NamingModal = () => (
-    <Modal
-      visible={showNamingModal}
-      transparent={true}
-      animationType="none"
-      onRequestClose={() => {
-        // Animate closing when back button is pressed
-        Animated.parallel([
-          // Animate content out
-          Animated.timing(namingModalContentAnim, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-            easing: Easing.in(Easing.cubic),
-          }),
-          
-          // Delay the blur fadeout slightly
-          Animated.sequence([
-            Animated.delay(50),
-            Animated.timing(namingBlurAnim, {
-              toValue: 0,
-              duration: 300,
-              useNativeDriver: false,
-              easing: Easing.in(Easing.ease),
-            }),
-          ]),
-        ]).start(() => {
-          setShowNamingModal(false);
-        });
-      }}
-    >
-      <TouchableOpacity 
-        activeOpacity={1}
-        style={{ flex: 1 }}
-        onPress={() => {
-          // Animate closing when backdrop is pressed
-          Animated.parallel([
-            // Animate content out
-            Animated.timing(namingModalContentAnim, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-              easing: Easing.in(Easing.cubic),
-            }),
-            
-            // Delay the blur fadeout slightly
-            Animated.sequence([
-              Animated.delay(50),
-              Animated.timing(namingBlurAnim, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: false,
-                easing: Easing.in(Easing.ease),
-              }),
-            ]),
-          ]).start(() => {
-            setShowNamingModal(false);
-          });
-        }}
-      >
-        {/* Dark overlay with animated opacity */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0, 
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            opacity: namingBackdropOpacity,
-          }}
-        />
-        
-        {/* Blur effect */}
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0, 
-            right: 0,
-            bottom: 0,
-            opacity: namingBlurAnim,
-          }}
-        >
-          <BlurView
-            intensity={50}
-            tint="dark"
-            style={{
-              width: '100%',
-              height: '100%',
-            }}
-          />
-        </Animated.View>
-        
-        {/* Modal content with animation */}
-        <Animated.View 
-          className="flex-1 justify-start items-center px-6"
-          style={{
-            opacity: namingModalContentAnim,
-            transform: [
-              { translateY: namingModalTranslateY },
-              { scale: namingModalScale },
-            ]
-          }}
-        >
-          <View className="bg-zinc-900 rounded-xl overflow-hidden w-full mt-24">
-            <View className="border-b border-zinc-800 p-4">
-              <Text className="text-white text-lg font-medium">Name Your Journal</Text>
-            </View>
-            
-            <View className="p-4">
-              <View className="flex-row items-center mb-4">
-                <View className="mr-3">
-                  {newJournalType === 'text' ? (
-                    <Image 
-                      source={TextIcon} 
-                      className="h-10 w-10"
-                      resizeMode="contain"
-                      style={{ backgroundColor: 'transparent' }}
-                    />
-                  ) : newJournalType === 'voice' ? (
-                    <Image 
-                      source={VoiceIcon} 
-                      className="h-10 w-10"
-                      resizeMode="contain"
-                      style={{ backgroundColor: 'transparent' }}
-                    />
-                  ) : (
-                    <View className="bg-zinc-800 rounded-full p-2">
-                      <Ionicons name="image-outline" size={20} color="#d6d3d1" />
-                    </View>
-                  )}
-                </View>
-                <Text className="text-white text-base">
-                  {newJournalType.charAt(0).toUpperCase() + newJournalType.slice(1)} Journal
-      </Text>
-    </View>
-              
-              <View className="bg-zinc-800/80 rounded-lg border border-zinc-700/50 px-4 py-3 mb-4">
-                <TextInput
-                  value={newJournalName}
-                  onChangeText={setNewJournalName}
-                  placeholder="Enter journal name"
-                  placeholderTextColor="#a8a29e"
-                  className="text-white text-base"
-                  autoFocus={true}
-                  returnKeyType="done"
-                  onSubmitEditing={confirmJournalCreation}
-                />
-              </View>
-              
-              {/* Folder Selection */}
-              <View className="mb-4">
-                <Text className="text-zinc-400 text-sm mb-2">Select Folder</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 20 }}
-                >
-                  <TouchableOpacity 
-                    className={`mr-2 px-3 py-2 rounded-lg flex-row items-center ${selectedFolder === null ? 'bg-zinc-700' : 'bg-zinc-800'}`}
-                    onPress={() => setSelectedFolder(null)}
+                <View className="p-4">
+                  <TouchableOpacity
+                    className={`flex-row items-center p-3 mb-2 rounded-lg ${!selectedFolder ? 'bg-blue-500/20' : ''}`}
+                    onPress={() => animateFolderSelection(null)}
                   >
-                    <Ionicons name="albums-outline" size={16} color="#d6d3d1" style={{ marginRight: 6 }} />
-                    <Text className="text-white text-sm">All Journals</Text>
+                    <Ionicons name="albums-outline" size={20} color="#d6d3d1" />
+                    <Text className="text-white ml-3">All Journals</Text>
+                    {!selectedFolder && (
+                      <Ionicons name="checkmark" size={20} color="#3b82f6" style={{ marginLeft: 'auto' }} />
+                    )}
                   </TouchableOpacity>
                   
                   {folders.map(folder => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={folder.id}
-                      className={`mr-2 px-3 py-2 rounded-lg flex-row items-center ${selectedFolder === folder.id ? 'bg-zinc-700' : 'bg-zinc-800'}`}
-                      onPress={() => setSelectedFolder(folder.id)}
-                      style={selectedFolder === folder.id ? { borderLeftWidth: 3, borderLeftColor: folder.color, paddingLeft: 8 } : {}}
+                      className={`flex-row items-center p-3 mb-2 rounded-lg ${selectedFolder === folder.id ? 'bg-blue-500/20' : ''}`}
+                      onPress={() => animateFolderSelection(folder.id)}
                     >
-                      <View 
-                        className="w-3 h-3 rounded-full mr-2" 
-                        style={{ backgroundColor: folder.color }}
-                      />
-                      <Text className="text-white text-sm">{folder.name}</Text>
+                      <View className="w-5 h-5 rounded-full" style={{ backgroundColor: folder.color }} />
+                      <Text className="text-white ml-3">{folder.name}</Text>
+                      {selectedFolder === folder.id && (
+                        <Ionicons name="checkmark" size={20} color="#3b82f6" style={{ marginLeft: 'auto' }} />
+                      )}
                     </TouchableOpacity>
                   ))}
-                  
-                  <TouchableOpacity 
-                    className="mr-2 px-3 py-2 rounded-lg flex-row items-center bg-zinc-800/60"
-                    onPress={() => {
-                      // Here you would open a create folder modal
-                      console.log('Create new folder');
-                    }}
-                  >
-                    <View className="w-5 h-5 rounded-full bg-zinc-700 items-center justify-center mr-2">
-                      <Ionicons name="add" size={12} color="#d6d3d1" />
-                    </View>
-                    <Text className="text-blue-400 text-sm">New Folder</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-              </View>
-              
-              <View className="flex-row justify-end space-x-3">
-                <TouchableOpacity 
-                  className="bg-zinc-800 rounded-lg px-4 py-2"
-                  onPress={() => setShowNamingModal(false)}
-                >
-                  <Text className="text-white">Cancel</Text>
-                </TouchableOpacity>
+      </View>
                 
-                <TouchableOpacity 
-                  className="bg-blue-600 rounded-lg px-4 py-2"
-                  onPress={confirmJournalCreation}
-                >
-                  <Text className="text-white font-medium">Create</Text>
-                </TouchableOpacity>
+                <View className="p-4 border-t border-zinc-800">
+      <TouchableOpacity 
+                    className="flex-row items-center justify-center p-3 rounded-lg bg-zinc-800"
+        onPress={() => {
+                      console.log('Create new folder');
+                      toggleFolderModal();
+        }}
+      >
+                    <Ionicons name="add-circle-outline" size={20} color="#d6d3d1" />
+                    <Text className="text-white ml-2">Create New Folder</Text>
+      </TouchableOpacity>
+    </View>
               </View>
             </View>
-          </View>
+          </SafeAreaView>
+        </BlurView>
+    </View>
+    </Modal>
+  );
+
+  const OptionsOverlay = () => (
+    <Modal
+      visible={showOptionsOverlay}
+      transparent={true}
+      animationType="none"
+      onRequestClose={() => {
+        if (showOptionsOverlay) {
+          toggleOptionsOverlay();
+          return true;
+        }
+        return false;
+      }}
+    >
+      <TouchableOpacity
+        activeOpacity={1}
+        style={{ flex: 1 }}
+        onPress={toggleOptionsOverlay}
+      >
+        {/* Animated backdrop */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            opacity: optionsBackdropOpacity,
+          }}
+        />
+        
+        {/* Blur effect */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0, 
+            right: 0,
+            bottom: 0,
+            opacity: optionsBlurAnim,
+          }}
+        >
+          <BlurView
+            intensity={50}
+            tint="dark"
+            style={{
+              width: '100%',
+              height: '100%',
+            }}
+          />
         </Animated.View>
+        
+        {/* Options menu - centered content */}
+        <SafeAreaView className="flex-1">
+          <Animated.View 
+            className="flex-1 justify-start items-center px-6 pt-20"
+            style={{
+              opacity: optionsContentAnim,
+              transform: [
+                { translateY: optionsTranslateY },
+                { scale: optionsScale },
+              ]
+            }}
+          >
+            {/* Title Container */}
+            <View className="w-full mb-8">
+              <View className="flex-row items-center justify-center">
+                <Text className="text-white text-xl font-medium">Menu Options</Text>
+              </View>
+            </View>
+            
+            {/* Menu Options - Similar to JournalPage */}
+            <View className="w-full space-y-4">
+              {/* Memories Option */}
+              <TouchableOpacity 
+                className="flex-row items-center bg-zinc-900/80 rounded-xl p-4"
+                onPress={() => {
+                  toggleOptionsOverlay();
+                  // Navigate to Memories page
+                  console.log('Navigate to Memories');
+                }}
+              >
+                <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
+                  <Ionicons name="images-outline" size={22} color="#d6d3d1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-lg">Memories</Text>
+                  <Text className="text-zinc-400 text-sm">Revisit past journal entries</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Stats Option */}
+              <TouchableOpacity 
+                className="flex-row items-center bg-zinc-900/80 rounded-xl p-4"
+                onPress={() => {
+                  toggleOptionsOverlay();
+                  // Navigate to Stats page
+                  console.log('Navigate to Stats');
+                }}
+              >
+                <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
+                  <Ionicons name="bar-chart-outline" size={22} color="#d6d3d1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-lg">Stats</Text>
+                  <Text className="text-zinc-400 text-sm">View insights and analytics</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Search Option */}
+              <TouchableOpacity 
+                className="flex-row items-center bg-zinc-900/80 rounded-xl p-4"
+                onPress={() => {
+                  toggleOptionsOverlay();
+                  // Navigate to Search page
+                  console.log('Navigate to Search');
+                }}
+              >
+                <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
+                  <Ionicons name="search-outline" size={22} color="#d6d3d1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-lg">Search</Text>
+                  <Text className="text-zinc-400 text-sm">Find specific journal entries</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Settings Option */}
+              <TouchableOpacity 
+                className="flex-row items-center bg-zinc-900/80 rounded-xl p-4"
+                onPress={() => {
+                  toggleOptionsOverlay();
+                  router.push('/Modal/Settings');
+                }}
+              >
+                <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
+                  <Ionicons name="settings-outline" size={22} color="#d6d3d1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-lg">Settings</Text>
+                  <Text className="text-zinc-400 text-sm">Configure app preferences</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </SafeAreaView>
       </TouchableOpacity>
     </Modal>
   );
@@ -1391,8 +868,7 @@ export default function Home() {
       />
 
       <FolderModal />
-      <CreateJournalModal />
-      <NamingModal />
+      <OptionsOverlay />
 
       <TouchableOpacity 
         activeOpacity={1} 
@@ -1435,9 +911,9 @@ export default function Home() {
           shadowRadius: 8,
           elevation: 5
         }}>
-          <LinearGradient
+        <LinearGradient
             colors={['rgba(39, 39, 42, 0.9)', 'rgba(24, 24, 27, 0.9)']}
-            start={{ x: 0, y: 0 }}
+          start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             className="p-[1px] rounded-full"
           >
@@ -1457,7 +933,7 @@ export default function Home() {
                 <Text className="text-zinc-200 text-base font-medium">Ask Your Journal</Text>
               </View>
             </TouchableOpacity>
-          </LinearGradient>
+        </LinearGradient>
         </View>
       </View>
     </SafeAreaView>
