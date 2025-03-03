@@ -1,10 +1,11 @@
-import { View, Text, TouchableOpacity, ScrollView, Switch, SafeAreaView, Animated, BackHandler } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, SafeAreaView, Animated, BackHandler, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Easing } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Settings() {
   const router = useRouter();
@@ -86,6 +87,58 @@ export default function Settings() {
     ]).start(() => {
       router.back();
     });
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Clear user data from AsyncStorage
+              await AsyncStorage.removeItem('user');
+              console.log('User data cleared from storage');
+              
+              // Close settings modal with animation
+              Animated.parallel([
+                Animated.timing(fadeAnim, {
+                  toValue: 0,
+                  duration: 300,
+                  useNativeDriver: true,
+                  easing: Easing.in(Easing.cubic),
+                }),
+                Animated.timing(slideAnim, {
+                  toValue: 50,
+                  duration: 350,
+                  useNativeDriver: true,
+                  easing: Easing.in(Easing.cubic),
+                }),
+                Animated.timing(blurAnim, {
+                  toValue: 0,
+                  duration: 400,
+                  useNativeDriver: false,
+                  easing: Easing.in(Easing.ease),
+                }),
+              ]).start(() => {
+                // Navigate to welcome page
+                router.replace('/');
+              });
+            } catch (error) {
+              console.error('Error logging out:', error);
+            }
+          }
+        }
+      ]
+    );
   };
   
   // Setting item component
@@ -252,11 +305,11 @@ export default function Settings() {
           />
           <View className="h-[1px] bg-zinc-900 ml-14" />
           <SettingItem
-            icon="trash-outline"
-            title="Clear All Data"
-            description="Delete all journal entries and settings"
+            icon="log-out-outline"
+            title="Logout"
+            description="Sign out of your account"
             type="danger"
-            onPress={() => console.log('Navigate to Clear Data')}
+            onPress={handleLogout}
           />
         </View>
         

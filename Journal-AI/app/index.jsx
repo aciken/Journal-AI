@@ -1,147 +1,207 @@
-import { View, Text, TouchableOpacity, SafeAreaView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Animated, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useGlobalContext } from './Context/GlobalProvider';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Get screen dimensions for responsive sizing
+const { width, height } = Dimensions.get('window');
+
+// Simple, elegant icons
 const PenIcon = () => (
-  <View className="w-4 h-4 items-center justify-center">
-    <View className="w-0.5 h-4 bg-white/90 rotate-45" />
-    <View className="absolute bottom-0 w-2 h-2 border-b-2 border-r-2 border-white/90 rotate-45" />
-  </View>
+  <Ionicons name="pencil-outline" size={22} color="#fff" />
 );
 
 const InsightIcon = () => (
-  <View className="w-4 h-4 items-center justify-center">
-    <View className="absolute w-3 h-3 border-2 border-white/90 rounded-full" />
-    <View className="absolute bottom-0 right-0 w-1.5 h-1.5 bg-white/90 rotate-45" />
-  </View>
+  <Ionicons name="analytics-outline" size={22} color="#fff" />
 );
 
 const AIIcon = () => (
-  <View className="w-4 h-4 items-center justify-center">
-    <View className="absolute w-3 h-3 border-2 border-white/90 rounded" />
-    <View className="absolute w-1.5 h-1.5 bg-white/90 rounded-sm" style={{ top: 2 }} />
-  </View>
+  <Ionicons name="sparkles-outline" size={22} color="#fff" />
 );
 
 export default function WelcomePage() {
+  const { isAuthenticated, user } = useGlobalContext();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  // State to track if we have a photo to display
+  const [hasPhoto, setHasPhoto] = useState(false);
+  // You can replace this with your actual photo URL or require statement
+  const photoSource = null; // Set to null to demonstrate empty state
+  
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
+  // Loading animation
+  const fadeLoadingAnim = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Simple fade in/out animation for loading
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fadeLoadingAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeLoadingAnim, {
+          toValue: 0.6,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Check if we have a valid photo
+    if (photoSource) {
+      setHasPhoto(true);
+    }
   }, []);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        console.log('User data:', userData);
+        
+        if (userData) {
+          // User is logged in, redirect to Home
+          setTimeout(() => {
+            router.replace('/Home');
+          }, 500); // Small delay for smoother transition
+        } else {
+          // No user found, show welcome page
+          setIsLoading(false);
+          
+          // Start welcome page animations
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+              toValue: 0,
+              duration: 800,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+      } catch (error) {
+        console.error('Error checking user session:', error);
+        setIsLoading(false);
+        
+        // Start welcome page animations even if there was an error
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    };
+    
+    fetchUser();
+  }, []);
+
+  // If still loading, show simple loading animation
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-black justify-center items-center">
+        <StatusBar style="light" />
+        <Animated.View style={{ opacity: fadeLoadingAnim }}>
+          <Text className="text-white text-2xl font-medium">Journal AI</Text>
+        </Animated.View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-black">
       <StatusBar style="light" />
-      <LinearGradient
-        colors={['rgba(38, 38, 38, 0.3)', 'rgba(0, 0, 0, 0)']}
-        className="absolute w-full h-96"
-      />
       
       <Animated.View 
-        className="flex-1 px-6 justify-between"
-        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+        className="flex-1 px-6 justify-between items-center"
+        style={{ 
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }}
       >
-        {/* Top Section */}
-        <View className="items-center mt-16">
-          <LinearGradient
-            colors={['#1F1F1F', '#2D2D2D']}
-            className="w-20 h-20 mb-6 rounded-2xl items-center justify-center shadow-lg"
-            style={{ elevation: 5 }}
-          >
-            <Text className="text-white text-3xl font-bold">AJ</Text>
-          </LinearGradient>
-          <Text className="text-4xl font-bold text-white mb-3">
-            AI Journal
-          </Text>
-          <Text className="text-base text-gray-400 text-center max-w-[280px] leading-5">
-            Your intelligent journaling companion for meaningful self-reflection
-          </Text>
+        {/* Photo Section - Will be empty if no photo */}
+        <View className="items-center mt-12 mb-4">
+          {hasPhoto ? (
+            <Image
+              source={photoSource}
+              style={{
+                width: width * 0.85,
+                height: width * 1.2,
+                borderRadius: 20,
+              }}
+              resizeMode="cover"
+            />
+          ) : (
+            // Empty view when no photo is available
+            <View style={{ width: width * 0.85, height: width * 0.5 }} />
+          )}
         </View>
 
-        {/* Middle Section - Features */}
-        <View className="py-10">
-          <View className="space-y-8">
-            <FeatureItem 
-              gradient={['#2D2D2D', '#1F1F1F']}
-              title="Smart Journaling"
-              description="Write freely with AI-powered prompts and guidance"
-              icon={<PenIcon />}
-            />
-            <FeatureItem 
-              gradient={['#2D2D2D', '#1F1F1F']}
-              title="Personal Insights"
-              description="Gain deeper understanding of your thoughts and patterns"
-              icon={<InsightIcon />}
-            />
-            <FeatureItem 
-              gradient={['#2D2D2D', '#1F1F1F']}
-              title="AI Analysis"
-              description="Receive thoughtful responses and perspectives"
-              icon={<AIIcon />}
-            />
-          </View>
-        </View>
-
-        {/* Bottom Section - Buttons */}
-        <View className="space-y-4 mb-10">
-          <Link href="/signup" asChild>
-            <TouchableOpacity className="shadow-lg">
-              <LinearGradient
-                colors={['#2D2D2D', '#1F1F1F']}
-                className="w-full py-4 rounded-xl"
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text className="text-white text-center text-base font-medium">
-                  Start Journaling
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Link>
+        {/* Bottom Section - Welcome Text and Buttons */}
+        <View className="w-full items-center mb-10">
+          <Text className="text-white text-4xl font-bold mb-3 text-center">
+            Welcome to AI Journal
+          </Text>
           
-
-            <TouchableOpacity
-            onPress={() => router.push('/Home')}
-            
-            className="w-full border border-gray-800 py-4 rounded-xl bg-black/40 shadow-sm active:bg-gray-900">
-              <Text className="text-gray-300 text-center text-base">
-                Sign In
-              </Text>
-            </TouchableOpacity>
+          <Text className="text-gray-300 text-center text-lg mb-10">
+            Starting today, let's capture your thoughts and discover your patterns.
+          </Text>
+          
+          <TouchableOpacity 
+            className="bg-white w-full py-4 rounded-full mb-4"
+            onPress={() => router.push('/Onboarding')}
+            style={{
+              shadowColor: "#fff",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.1,
+              shadowRadius: 10,
+              elevation: 5,
+            }}
+          >
+            <Text className="text-black text-center text-lg font-semibold">
+              Get Started
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => router.push('/Modal/Signin')}
+          >
+            <Text className="text-gray-400 text-center text-base">
+              Already have an account?
+            </Text>
+          </TouchableOpacity>
         </View>
       </Animated.View>
     </SafeAreaView>
   );
 }
 
-const FeatureItem = ({ gradient, title, description, icon }) => (
+const FeatureItem = ({ icon, title, description }) => (
   <View className="flex-row items-start space-x-4">
-    <LinearGradient
-      colors={gradient}
-      className="w-10 h-10 rounded-xl items-center justify-center shadow-md"
-      style={{ elevation: 3 }}
-    >
+    <View className="bg-zinc-800 w-10 h-10 rounded-lg items-center justify-center">
       {icon}
-    </LinearGradient>
+    </View>
     <View className="flex-1">
       <Text className="text-base font-medium text-white mb-1">{title}</Text>
-      <Text className="text-gray-400 text-sm leading-5">{description}</Text>
+      <Text className="text-zinc-400 text-sm">{description}</Text>
     </View>
   </View>
 );

@@ -11,6 +11,8 @@ export default function ModalLayout() {
     >
       <Stack.Screen name="Settings" />
       <Stack.Screen name="CreateJournal" />
+      <Stack.Screen name="Signin" />
+      <Stack.Screen name="Signup" />
     </Stack>
   );
 } 

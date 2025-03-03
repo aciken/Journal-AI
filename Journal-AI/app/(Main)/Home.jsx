@@ -200,33 +200,33 @@ export default function Home() {
   const animValue = useRef(new Animated.Value(0)).current;
   
   const [journalEntries, setJournalEntries] = useState([
-    {
-      id: '1',
-      title: 'New Project Kickoff',
-      date: 'Today',
-      time: '9:30 AM',
-      content: 'Started working on my new project. Feeling excited about the possibilities!',
-      mood: 'happy',
-      folderId: '2'
-    },
-    {
-      id: '2',
-      title: 'Dinner with Friends',
-      date: 'Yesterday',
-      time: '8:45 PM',
-      content: 'Had dinner with friends. We talked about our future plans and shared some great memories.',
-      mood: 'relaxed',
-      folderId: '1'
-    },
-    {
-      id: '3',
-      title: 'Autumn Walk',
-      date: 'Nov 12, 2023',
-      time: '3:20 PM',
-      content: 'Went for a long walk in the park. The autumn colors were beautiful.',
-      mood: 'peaceful',
-      folderId: '1'
-    },
+    // {
+    //   id: '1',
+    //   title: 'New Project Kickoff',
+    //   date: 'Today',
+    //   time: '9:30 AM',
+    //   content: 'Started working on my new project. Feeling excited about the possibilities!',
+    //   mood: 'happy',
+    //   folderId: '2'
+    // },
+    // {
+    //   id: '2',
+    //   title: 'Dinner with Friends',
+    //   date: 'Yesterday',
+    //   time: '8:45 PM',
+    //   content: 'Had dinner with friends. We talked about our future plans and shared some great memories.',
+    //   mood: 'relaxed',
+    //   folderId: '1'
+    // },
+    // {
+    //   id: '3',
+    //   title: 'Autumn Walk',
+    //   date: 'Nov 12, 2023',
+    //   time: '3:20 PM',
+    //   content: 'Went for a long walk in the park. The autumn colors were beautiful.',
+    //   mood: 'peaceful',
+    //   folderId: '1'
+    // },
   ]);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -890,12 +890,28 @@ export default function Home() {
                 <Text className="text-gray-400 mt-4 text-base font-medium">
                   {selectedFolder ? "No entries in this folder" : "No entries for this date"}
                 </Text>
-                <Text className="text-gray-600 text-center mt-2 px-10 text-sm">
+                <Text className="text-gray-600 text-center mt-2 px-10 text-sm mb-6">
                   {selectedFolder 
                     ? "Try selecting a different folder or create a new entry" 
                     : "Try selecting a different date or create a new entry"
                   }
                 </Text>
+                
+                {/* Create New Journal Button */}
+                <TouchableOpacity 
+                  className="bg-zinc-800 rounded-xl py-3.5 px-6 flex-row items-center justify-center" 
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                  onPress={() => createNewJournal('journal')}
+                >
+                  <Ionicons name="add-outline" size={22} color="#e4e4e7" />
+                  <Text className="text-zinc-200 font-medium text-base ml-2">New Journal</Text>
+                </TouchableOpacity>
               </View>
             }
           />
