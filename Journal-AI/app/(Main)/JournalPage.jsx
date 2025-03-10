@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, StatusBar, Image, Animated, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, StatusBar, Image, Animated, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, useRef, useEffect } from 'react';
@@ -34,12 +34,18 @@ export default function JournalPage() {
   const [journalContent, setJournalContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [contentChanged, setContentChanged] = useState(false);
   
   // Enhanced animations - simplified for elegance
   const blurAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
   const addMenuBlurAnim = useRef(new Animated.Value(0)).current;
   const addMenuContentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Add a new animated value for the button
+  const [buttonAnimation] = useState(new Animated.Value(0));
   
   // Fetch journal entry from AsyncStorage
   useEffect(() => {
@@ -496,9 +502,33 @@ export default function JournalPage() {
     }
   };
 
+  const handleContentChange = (text) => {
+    setJournalContent(text);
+    // Only show button if content is different from original
+    if (text !== entry?.content) {
+      setContentChanged(true);
+      // Animate button in
+      Animated.spring(buttonAnimation, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 40
+      }).start();
+      console.log("Content changed, showing save button");
+    } else {
+      setContentChanged(false);
+      // Animate button out
+      Animated.timing(buttonAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true
+      }).start();
+    }
+  };
+
   return (
     <View className="flex-1 bg-black">
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
       
       <SafeAreaView className="flex-1">
         <View className="flex-1">
@@ -511,7 +541,7 @@ export default function JournalPage() {
             }}
           >
             {/* Header content */}
-            <View className="px-4 py-3 flex-row items-center">
+            <View className="px-4 py-3 flex-row items-center justify-between">
               <TouchableOpacity 
                 onPress={() => {
                   // Save content before navigating back
@@ -562,22 +592,61 @@ export default function JournalPage() {
                 >
                   <Image 
                     source={JournalIcon} 
-                    className="w-7 h-7 mr-2"
-                    resizeMode="contain"
+                    style={{ width: 18, height: 18, tintColor: '#fff' }} 
+                    className="mr-2"
                   />
-                  <Text className="text-white text-lg font-medium mr-2" numberOfLines={1}>
-                    {entry.title}
+                  <Text className="text-white font-medium mr-1">
+                    {entry?.title || 'Journal Entry'}
                   </Text>
-                  <Ionicons name="chevron-forward" size={20} color="#a8a29e" />
+                  <Ionicons name="chevron-down" size={16} color="#71717a" />
                 </TouchableOpacity>
               </View>
               
-              <TouchableOpacity 
-                style={{ width: 24 }}
-                onPress={toggleAddMenu}
-              >
-                <Ionicons name="add" size={24} color="#a8a29e" />
-              </TouchableOpacity>
+              {/* Save Button - Animated and in header */}
+              <View className="flex-row items-center">
+                {contentChanged ? (
+                  <Animated.View
+                    style={{
+                      transform: [
+                        { scale: buttonAnimation }
+                      ],
+                      opacity: buttonAnimation,
+                      marginRight: 12
+                    }}
+                  >
+                    <TouchableOpacity
+                      className="flex-row items-center"
+                      onPress={() => {
+                        console.log("Save button pressed");
+                        saveJournalContent();
+                        // Animate button out after saving
+                        Animated.timing(buttonAnimation, {
+                          toValue: 0,
+                          duration: 200,
+                          useNativeDriver: true
+                        }).start(() => setContentChanged(false));
+                      }}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <ActivityIndicator color="#ffffff" size="small" />
+                      ) : (
+                        <Text className="text-white font-medium">Save</Text>
+                      )}
+                    </TouchableOpacity>
+                  </Animated.View>
+                ) : (
+                  <View style={{ width: 0 }} /> 
+                )}
+                
+                {/* Plus button */}
+                <TouchableOpacity
+                  onPress={toggleAddMenu}
+                  style={{ marginLeft: 8 }}
+                >
+                  <Ionicons name="add" size={24} color="#a8a29e" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
           
@@ -605,7 +674,7 @@ export default function JournalPage() {
                 className="text-white text-base leading-6 mb-10"
                 multiline={true}
                 value={journalContent}
-                onChangeText={setJournalContent}
+                onChangeText={handleContentChange}
                 placeholder="Start writing your thoughts here..."
                 placeholderTextColor="#71717a"
                 style={{ minHeight: 300 }}

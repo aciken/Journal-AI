@@ -873,10 +873,10 @@ export default function Home() {
       }
     };
 
-    // Truncate content to a reasonable preview length
-    const truncateContent = (text, maxLength = 120) => {
+    // Truncate content to a fixed length for consistent card sizes
+    const truncateContent = (text, maxLength = 40) => {
       if (!text) return '';
-      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+      return text.length > maxLength ? text.substring(0, maxLength) : text;
     };
 
     // Format date for display
@@ -917,6 +917,11 @@ export default function Home() {
             backgroundColor: 'rgba(24, 24, 27, 0.7)',
             borderWidth: 1,
             borderColor: 'rgba(39, 39, 42, 0.8)',
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 3,
           }}
         >
           {/* Main content area */}
@@ -924,7 +929,7 @@ export default function Home() {
             {/* Title and date row */}
             <View className="flex-row justify-between items-start mb-3">
               <View className="flex-1 mr-3">
-                <Text className="text-white text-lg font-semibold">{item.title}</Text>
+                <Text className="text-white text-lg font-semibold" numberOfLines={1}>{item.title}</Text>
                 <View className="flex-row items-center mt-1">
                   <Text className="text-zinc-400 text-xs">{formatDate(item.displayDate || item.date)}</Text>
                   <Text className="text-zinc-500 text-xs mx-1.5">•</Text>
@@ -948,10 +953,22 @@ export default function Home() {
               )}
             </View>
             
-            {/* Content preview */}
-            <Text className="text-zinc-300 leading-5 text-sm mb-4" numberOfLines={2}>
-              {truncateContent(item.content)}
-            </Text>
+            {/* Content preview with simple truncation and three dots */}
+            <View className="h-10 mb-4 justify-center relative overflow-hidden">
+              {item.content ? (
+                <Text 
+                  className="text-zinc-400 leading-5 text-sm"
+                  numberOfLines={1}
+                  style={{ 
+                    fontWeight: '400',
+                  }}
+                >
+                  {truncateContent(item.content, 25)} ...
+                </Text>
+              ) : (
+                <Text className="text-zinc-500 text-sm italic">No content</Text>
+              )}
+            </View>
             
             {/* Bottom row with mood indicator only */}
             <View className="flex-row items-center justify-between">
