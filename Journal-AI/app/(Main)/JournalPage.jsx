@@ -7,19 +7,294 @@ import { BlurView } from 'expo-blur';
 import JournalIcon from '../../assets/Icons/TextIcon.png';
 import { Easing } from 'react-native';
 import { Asset } from 'expo-asset';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { format } from 'date-fns';
+import { useGlobalContext } from '../Context/GlobalProvider';
 
 export default function JournalPage() {
+  const { user,setUser } = useGlobalContext();
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const { id } = params;
+  
+  console.log('JournalPage - Received ID:', id, 'Type:', typeof id);
+  
   const [isBlurred, setIsBlurred] = useState(false);
   const [iconsLoaded, setIconsLoaded] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [entry, setEntry] = useState({
+    id: '',
+    title: '',
+    content: '',
+    date: '',
+    time: '',
+    lastUpdated: new Date().toISOString()
+  });
+  const [journalContent, setJournalContent] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Enhanced animations - simplified for elegance
   const blurAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
   const addMenuBlurAnim = useRef(new Animated.Value(0)).current;
   const addMenuContentAnim = useRef(new Animated.Value(0)).current;
+  
+  // Fetch journal entry from AsyncStorage
+  useEffect(() => {
+    const fetchJournalEntry = async () => {
+      try {
+        setIsLoading(true);
+        // Make sure we have a valid ID
+        const journalId = id?.toString();
+        console.log('Fetching journal entry with ID:', journalId, 'Type:', typeof journalId);
+        
+        if (!journalId) {
+          console.log('No journal ID provided');
+          setIsLoading(false);
+          return;
+        }
+        
+        const userData = await AsyncStorage.getItem('user');
+        
+        if (userData) {
+          const user = JSON.parse(userData);
+          console.log('User data retrieved, looking for journal entry');
+          
+          // Look for the journal entry in user.Journal
+          if (user.Journal && Array.isArray(user.Journal)) {
+            console.log('Found Journal array with', user.Journal.length, 'entries');
+            console.log('Journal IDs:', user.Journal.map(j => `${j.id} (${typeof j.id})`).join(', '));
+            
+            // Find the journal entry by ID - try different comparison methods
+            let foundEntry = null;
+            
+            // First try exact match
+            foundEntry = user.Journal.find(journal => journal.id === journalId);
+            console.log('Exact match result:', foundEntry ? 'Found' : 'Not found');
+            
+            // If not found, try string comparison
+            if (!foundEntry) {
+              foundEntry = user.Journal.find(journal => String(journal.id) === String(journalId));
+              console.log('String comparison result:', foundEntry ? 'Found' : 'Not found');
+            }
+            
+            // If still not found, try loose comparison
+            if (!foundEntry) {
+              foundEntry = user.Journal.find(journal => journal.id == journalId);
+              console.log('Loose comparison result:', foundEntry ? 'Found' : 'Not found');
+            }
+            
+            // If still not found, try numeric comparison (in case IDs are numbers stored as strings)
+            if (!foundEntry) {
+              const numericId = Number(journalId);
+              if (!isNaN(numericId)) {
+                foundEntry = user.Journal.find(journal => Number(journal.id) === numericId);
+                console.log('Numeric comparison result:', foundEntry ? 'Found' : 'Not found');
+              }
+            }
+            
+            if (foundEntry) {
+              console.log('Found journal entry:', foundEntry);
+              // Format date and time for display
+              let displayDate = 'Unknown date';
+              let displayTime = '';
+              
+              try {
+                if (foundEntry.date) {
+                  const journalDate = new Date(foundEntry.date);
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  
+                  // Check if the date is today or yesterday
+                  if (journalDate.toDateString() === today.toDateString()) {
+                    displayDate = 'Today';
+                  } else if (journalDate.toDateString() === yesterday.toDateString()) {
+                    displayDate = 'Yesterday';
+                  } else {
+                    // Format as Month Day, Year
+                    displayDate = journalDate.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    });
+                  }
+                  
+                  // Format time as HH:MM AM/PM
+                  displayTime = journalDate.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+                }
+              } catch (e) {
+                console.log('Error formatting date:', e);
+              }
+              
+              // Set the entry with formatted date and time
+              const updatedEntry = {
+                ...foundEntry,
+                displayDate: displayDate,
+                time: displayTime,
+              };
+              
+              console.log('Setting entry state:', updatedEntry);
+              setEntry(updatedEntry);
+              
+              // Set the journal content for editing
+              console.log('Setting journal content:', foundEntry.content);
+              setJournalContent(foundEntry.content || '');
+            } else {
+              console.log('Journal entry not found with ID:', journalId);
+              console.log('Available IDs:', user.Journal.map(j => j.id).join(', '));
+              
+              // Set default values if entry not found
+              setEntry({
+                id: journalId,
+                title: 'New Journal Entry',
+                content: '',
+                date: format(new Date(), 'MMM d, yyyy'),
+                time: format(new Date(), 'h:mm a'),
+                lastUpdated: new Date().toISOString()
+              });
+              setJournalContent('');
+            }
+          } else {
+            console.log('No journal entries found in user data');
+          }
+        } else {
+          console.log('No user data found in AsyncStorage');
+        }
+      } catch (error) {
+        console.error('Error fetching journal entry:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchJournalEntry();
+  }, [id]);
+  
+  // Save journal content to AsyncStorage
+  const saveJournalContent = async () => {
+    try {
+      setIsSaving(true);
+      // Make sure we have a valid ID
+      const journalId = id?.toString();
+      console.log('Saving journal content for ID:', journalId);
+      
+      if (!journalContent.trim()) {
+        console.log('Journal content is empty, not saving');
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!journalId) {
+        console.log('No journal ID provided for saving');
+        setIsSaving(false);
+        return;
+      }
+      
+      const userData = await AsyncStorage.getItem('user');
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        console.log('User data retrieved for saving');
+        
+        // Update the journal entry in user.Journal
+        if (user.Journal && Array.isArray(user.Journal)) {
+          console.log('Found Journal array with', user.Journal.length, 'entries');
+          console.log('Looking for journal with ID:', journalId);
+          
+          // Check if the journal entry exists - try different comparison methods
+          let journalIndex = user.Journal.findIndex(journal => journal.id === journalId);
+          
+          if (journalIndex === -1) {
+            journalIndex = user.Journal.findIndex(journal => String(journal.id) === String(journalId));
+          }
+          
+          if (journalIndex === -1) {
+            journalIndex = user.Journal.findIndex(journal => journal.id == journalId);
+          }
+          
+          if (journalIndex === -1) {
+            const numericId = Number(journalId);
+            if (!isNaN(numericId)) {
+              journalIndex = user.Journal.findIndex(journal => Number(journal.id) === numericId);
+            }
+          }
+          
+          if (journalIndex !== -1) {
+            console.log('Found journal at index:', journalIndex);
+            
+            // Create updated journal entry
+            const updatedJournal = {
+              ...user.Journal[journalIndex],
+              content: journalContent,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            console.log('Updating journal with new content:', updatedJournal.content.substring(0, 50) + '...');
+            
+            // Update the journal in the array
+            user.Journal[journalIndex] = updatedJournal;
+            
+            // Save updated user data to AsyncStorage
+            await AsyncStorage.setItem('user', JSON.stringify(user));
+            
+            // Update entry state
+            setEntry(prev => ({
+              ...prev,
+              content: journalContent,
+              lastUpdated: new Date().toISOString()
+            }));
+            
+            console.log('Journal content saved successfully');
+          } else {
+            console.log('Journal entry not found for saving, ID:', journalId);
+            console.log('Available journal IDs:', user.Journal.map(j => j.id).join(', '));
+          }
+        } else {
+          console.log('No Journal array found in user data for saving');
+        }
+      } else {
+        console.log('No user data found in AsyncStorage for saving');
+      }
+    } catch (error) {
+      console.error('Error saving journal content:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveJournalServer = async () => {
+    try {
+      console.log(JSON.parse(user)._id, id, journalContent);
+      const response = await axios.put('https://a68e-109-245-199-118.ngrok-free.app/savejournal', {
+        userId: JSON.parse(user)._id,
+        journalId: id,
+        content: journalContent
+      });
+      console.log('Journal content saved on server:', response.data);
+    } catch (error) {
+      console.error('Error saving journal content on server:', error);
+    }
+  };
+  
+
+
+  
+  // Auto-save when leaving the page
+  useEffect(() => {
+    return () => {
+      if (journalContent !== entry.content) {
+        console.log('Auto-saving journal content before unmounting');
+        saveJournalContent();
+      }
+    };
+  }, [journalContent, entry.content, id]);
   
   // Preload icons to prevent loading delay
   useEffect(() => {
@@ -210,50 +485,6 @@ export default function JournalPage() {
     { icon: 'image-outline', label: 'Add Image', action: () => console.log('Add image selected') },
   ];
   
-  // This would normally fetch from a database
-  // For now, we'll use mock data similar to what's in Home.jsx
-  const journalEntries = useMemo(() => [
-    {
-      id: '1',
-      title: 'New Project Kickoff',
-      date: 'Today',
-      time: '9:30 AM',
-      content: 'Started working on my new project. Feeling excited about the possibilities!',
-      mood: 'happy',
-      folderId: '2'
-    },
-    {
-      id: '2',
-      title: 'Dinner with Friends',
-      date: 'Yesterday',
-      time: '8:45 PM',
-      content: 'Had dinner with friends. We talked about our future plans and shared some great memories.',
-      mood: 'relaxed',
-      folderId: '1'
-    },
-    {
-      id: '3',
-      title: 'Autumn Walk',
-      date: 'Nov 12, 2023',
-      time: '3:20 PM',
-      content: 'Went for a long walk in the park. The autumn colors were beautiful.',
-      mood: 'peaceful',
-      folderId: '1'
-    },
-  ], []);
-  
-  const entry = useMemo(() => {
-    return journalEntries.find(entry => entry.id === id) || {
-      id: '0',
-      title: 'Journal Title',
-      date: 'Today',
-      time: '12:00 PM',
-      content: 'Text asd agdf dfg asd...',
-      mood: 'default',
-      folderId: null
-    };
-  }, [id, journalEntries]);
-  
   const getMoodIcon = (mood) => {
     switch(mood) {
       case 'happy': return 'sunny-outline';
@@ -282,7 +513,42 @@ export default function JournalPage() {
             {/* Header content */}
             <View className="px-4 py-3 flex-row items-center">
               <TouchableOpacity 
-                onPress={() => router.back()}
+                onPress={() => {
+                  // Save content before navigating back
+                  const journalId = id?.toString();
+                  
+                  // Correctly accessing user properties
+                  console.log(JSON.parse(user)._id)
+
+                  
+                  console.log('aaaa',journalId, journalContent, entry.content)
+                  // Normalize both strings for comparison (trim whitespace and handle null/undefined)
+                  const normalizedJournalContent = (journalContent || '').trim();
+                  const normalizedEntryContent = (entry?.content || '').trim();
+                  
+                  // Log the normalized values for debugging
+                  console.log('Normalized comparison:', 
+                    `journalContent: "${normalizedJournalContent.substring(0, 20)}..."`, 
+                    `entry.content: "${normalizedEntryContent.substring(0, 20)}..."`
+                  );
+                  
+                  if (journalId && normalizedJournalContent !== normalizedEntryContent) {
+                    console.log('Saving content before navigating back');
+                    // Use async/await with a timeout to ensure content is saved
+                    console.log('back button pressed');
+                    (async () => {
+                      setIsSaving(true);
+                      await saveJournalContent();
+                      await saveJournalServer();
+                      setTimeout(() => {
+                        router.back();
+                      }, 300);
+                    })();
+                  } else {
+                    console.log('No changes detected or missing journalId, navigating back without saving');
+                    router.back();
+                  }
+                }}
                 className="mr-3"
               >
                 <Ionicons name="chevron-back" size={24} color="#fff" />
@@ -299,7 +565,9 @@ export default function JournalPage() {
                     className="w-7 h-7 mr-2"
                     resizeMode="contain"
                   />
-                  <Text className="text-white text-lg font-medium mr-2">{entry.title}</Text>
+                  <Text className="text-white text-lg font-medium mr-2" numberOfLines={1}>
+                    {entry.title}
+                  </Text>
                   <Ionicons name="chevron-forward" size={20} color="#a8a29e" />
                 </TouchableOpacity>
               </View>
@@ -314,23 +582,41 @@ export default function JournalPage() {
           </View>
           
           {/* Journal Content */}
-          <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingTop: 10 }}>
-            {/* Journal metadata */}
-            <View className="mt-3 mb-4 flex-row items-center">
-              <Text className="text-zinc-400 text-sm">{entry.date}</Text>
-              <Text className="text-zinc-600 text-sm mx-1">•</Text>
-              <Text className="text-zinc-400 text-sm">{entry.time}</Text>
-              <Text className="text-zinc-600 text-sm mx-1">•</Text>
-              <Ionicons name={getMoodIcon(entry.mood)} size={14} color="#a8a29e" />
+          {isLoading ? (
+            <View className="flex-1 justify-center items-center">
+              <Text className="text-white text-lg">Loading journal...</Text>
             </View>
-            
-            {/* Main journal content */}
-            <Text className="text-white text-base leading-6 mb-10">
-              {entry.content}
-            </Text>
-            
-           
-          </ScrollView>
+          ) : (
+            <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingTop: 10 }}>
+              {/* Journal metadata */}
+              <View className="mt-3 mb-4 flex-row items-center">
+                <Text className="text-zinc-400 text-sm">{entry.displayDate || entry.date}</Text>
+                <Text className="text-zinc-600 text-sm mx-1">•</Text>
+                <Text className="text-zinc-400 text-sm">{entry.time}</Text>
+                <Text className="text-zinc-600 text-sm mx-1">•</Text>
+                <Ionicons name={getMoodIcon(entry.mood)} size={14} color="#a8a29e" />
+                {isSaving && (
+                  <Text className="text-zinc-400 text-xs ml-2">Saving...</Text>
+                )}
+              </View>
+              
+              {/* Main journal content - editable */}
+              <TextInput
+                className="text-white text-base leading-6 mb-10"
+                multiline={true}
+                value={journalContent}
+                onChangeText={setJournalContent}
+                placeholder="Start writing your thoughts here..."
+                placeholderTextColor="#71717a"
+                style={{ minHeight: 300 }}
+                autoFocus={false}
+                onBlur={() => {
+                  console.log('Saving journal content on blur');
+                  saveJournalContent();
+                }}
+              />
+            </ScrollView>
+          )}
           
           {/* Menu Modal with backdrop - beautiful animations */}
           <Modal

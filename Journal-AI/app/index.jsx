@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGlobalContext } from './Context/GlobalProvider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+
 // Get screen dimensions for responsive sizing
 const { width, height } = Dimensions.get('window');
 
@@ -25,7 +26,8 @@ const AIIcon = () => (
 );
 
 export default function WelcomePage() {
-  const { isAuthenticated, user } = useGlobalContext();
+
+  const { isAuthenticated, user,setUser } = useGlobalContext();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -69,6 +71,9 @@ export default function WelcomePage() {
         console.log('User data:', userData);
         
         if (userData) {
+          console.log('Setting user:', JSON.parse(userData));
+          setUser(JSON.parse(userData));
+          AsyncStorage.setItem('user', JSON.stringify(JSON.parse(userData)));
           // User is logged in, redirect to Home
           setTimeout(() => {
             router.replace('/Home');

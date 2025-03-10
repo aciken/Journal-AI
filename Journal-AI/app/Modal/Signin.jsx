@@ -15,8 +15,10 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { useGlobalContext } from '../Context/GlobalProvider';
 
 export default function Signin() {
+  const { setUser } = useGlobalContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -42,7 +44,7 @@ export default function Signin() {
 
   const handleSignIn = async () => {
     try {
-      const response = await axios.post('https://a68b-109-245-206-202.ngrok-free.app/signin', {
+      const response = await axios.post('https://a68e-109-245-199-118.ngrok-free.app/signin', {
         email,
         password
       });
@@ -50,6 +52,7 @@ export default function Signin() {
       console.log(response.status);
       if (response.status === 200) {
         AsyncStorage.setItem('user', JSON.stringify(response.data));
+        setUser(response.data);
         router.back();
         router.push('/Home');
       }

@@ -14,9 +14,12 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGlobalContext } from '../Context/GlobalProvider';
 
 
 export default function Signup() {
+  const { setUser } = useGlobalContext();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,12 +68,14 @@ export default function Signup() {
     
 
     try {
-      const response = await axios.put('https://a68b-109-245-206-202.ngrok-free.app/signup', {
+      const response = await axios.put('https://a68e-109-245-199-118.ngrok-free.app/signup', {
         name,
         email,
         password
       });
       console.log(response.data);
+      await AsyncStorage.setItem('user', JSON.stringify(response.data));
+      setUser(response.data); 
       router.back();
       router.push('/Home');
     } catch (error) {

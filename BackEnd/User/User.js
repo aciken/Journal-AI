@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema({
     email: String,
     password: String,
     Journal: {type: Array, default: []},
+    folders: {type: Array, default: [{title: 'Personal', id: '1'}, {title: 'Work', id: '2'}]},
 });
 
 module.exports = mongoose.model('User', UserSchema);
