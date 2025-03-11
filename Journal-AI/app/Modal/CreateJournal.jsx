@@ -231,7 +231,7 @@ export default function CreateJournal() {
                 </View>
                 <View>
                   <Text className="text-zinc-400 text-sm font-medium">NEW</Text>
-                  <Text className="text-white text-3xl font-bold">Journal</Text>
+                  <Text className="text-white text-2xl font-bold">Journal</Text>
                 </View>
               </View>
               <TouchableOpacity 
@@ -252,8 +252,8 @@ export default function CreateJournal() {
               contentContainerStyle={{ paddingBottom: 100 }}
             >
               {/* Journal Name Input with enhanced styling */}
-              <View className="mt-10 mb-10">
-                <Text className="text-zinc-200 text-xl font-semibold mb-4">
+              <View className="mt-8 mb-8">
+                <Text className="text-zinc-200 text-lg font-semibold mb-3">
                   What will you call your journal?
                 </Text>
                 
@@ -261,9 +261,9 @@ export default function CreateJournal() {
                   style={{
                     borderColor: getInputBorderColor(),
                     borderWidth: 1,
-                    borderRadius: 16,
+                    borderRadius: 14,
                     backgroundColor: 'rgba(39, 39, 42, 0.6)',
-                    marginBottom: 10,
+                    marginBottom: 8,
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.2,
@@ -276,7 +276,7 @@ export default function CreateJournal() {
                     onChangeText={setNewJournalName}
                     placeholder="Enter journal name"
                     placeholderTextColor="#71717a"
-                    className="text-white text-xl px-5 py-5"
+                    className="text-white text-base px-4 py-4"
                     maxLength={50}
                     autoFocus={false}
                     onFocus={() => {
@@ -331,10 +331,10 @@ export default function CreateJournal() {
               </View>
               
               {/* Enhanced Folder Selection */}
-              <View className="mb-10">
-                <View className="flex-row items-center mb-4">
-                  <Ionicons name="folder-outline" size={18} color="#d4d4d8" style={{ marginRight: 6 }} />
-                  <Text className="text-zinc-200 text-xl font-semibold">
+              <View className="mb-8">
+                <View className="flex-row items-center mb-3">
+                  <Ionicons name="folder-outline" size={16} color="#d4d4d8" style={{ marginRight: 6 }} />
+                  <Text className="text-zinc-200 text-lg font-semibold">
                     Where would you like to save it?
                   </Text>
                 </View>
@@ -346,7 +346,7 @@ export default function CreateJournal() {
                 ) : (
                   <View className="space-y-4">
                     <TouchableOpacity
-                      className={`px-5 py-4 rounded-xl flex-row items-center ${
+                      className={`px-4 py-3 rounded-xl flex-row items-center ${
                         selectedFolder === null 
                           ? 'bg-zinc-700/30 border border-zinc-600/40' 
                           : 'bg-zinc-800/60 border border-zinc-800/40'
@@ -362,19 +362,19 @@ export default function CreateJournal() {
                     >
                       <Ionicons 
                         name="library-outline" 
-                        size={22} 
+                        size={18} 
                         color={selectedFolder === null ? "#d4d4d8" : "#a1a1aa"} 
-                        style={{ marginRight: 12 }} 
+                        style={{ marginRight: 10 }} 
                       />
                       <View>
                         <Text 
-                          className={`font-medium text-lg ${
+                          className={`font-medium text-base ${
                             selectedFolder === null ? 'text-white' : 'text-zinc-400'
                           }`}
                         >
                           Main Library
                         </Text>
-                        <Text className="text-zinc-500 text-sm">
+                        <Text className="text-zinc-500 text-xs">
                           Default location for all journals
                         </Text>
                       </View>
@@ -386,7 +386,7 @@ export default function CreateJournal() {
                       return (
                         <TouchableOpacity
                           key={folder.id}
-                          className={`px-5 py-4 rounded-xl flex-row items-center ${
+                          className={`px-4 py-3 rounded-xl flex-row items-center ${
                             isSelected
                               ? `border border-opacity-40`
                               : 'bg-zinc-800/60 border border-zinc-800/40'
@@ -402,20 +402,21 @@ export default function CreateJournal() {
                           }}
                           onPress={() => setSelectedFolder(folder.id)}
                         >
-                          <View
-                            className="w-6 h-6 rounded-full mr-3 items-center justify-center"
+                          <View 
+                            className="w-6 h-6 rounded-full items-center justify-center mr-3"
                             style={{ backgroundColor: folderColor }}
                           >
-                            <Ionicons name="folder" size={12} color="rgba(255,255,255,0.8)" />
+                            <Ionicons name="folder" size={12} color="#ffffff" />
                           </View>
                           <View>
                             <Text 
-                              className="font-medium text-lg"
-                              style={{ color: isSelected ? folderColor : '#ffffff' }}
+                              className={`font-medium text-base ${
+                                isSelected ? 'text-white' : 'text-zinc-300'
+                              }`}
                             >
                               {folder.title || folder.name}
                             </Text>
-                            <Text className="text-zinc-500 text-sm">
+                            <Text className="text-zinc-400 text-xs">
                               {folder.description || `${folder.journals?.length || 0} journals`}
                             </Text>
                           </View>
@@ -468,18 +469,18 @@ export default function CreateJournal() {
                   >
                     <Ionicons 
                       name="create" 
-                      size={20} 
+                      size={18} 
                       color={newJournalName.trim() ? "#000" : "#a1a1aa"} 
-                      style={{ marginRight: 8 }} 
+                      style={{ marginRight: 6 }} 
                     />
-                    <Text className={`text-center font-bold text-lg ${newJournalName.trim() ? 'text-black' : 'text-zinc-400'}`}>
+                    <Text className={`text-center font-bold text-base ${newJournalName.trim() ? 'text-black' : 'text-zinc-400'}`}>
                       Create Journal
                     </Text>
                   </TouchableOpacity>
                 </Animated.View>
               </LinearGradient>
             </View>
-          </Animated.View>
+          </Animated.View> 
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
