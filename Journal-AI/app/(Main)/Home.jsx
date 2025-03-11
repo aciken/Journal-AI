@@ -497,6 +497,7 @@ export default function Home() {
   const JournalHeader = () => {
     const [showCalendar, setShowCalendar] = useState(false);
     const [showStreakTooltip, setShowStreakTooltip] = useState(false);
+    const [showStreakOverlay, setShowStreakOverlay] = useState(false);
     const today = new Date();
     const tooltipAnim = useRef(new Animated.Value(0)).current;
     
@@ -531,6 +532,11 @@ export default function Home() {
           });
         }, 3000);
       }
+    };
+    
+    // Toggle streak overlay
+    const toggleStreakOverlay = () => {
+      setShowStreakOverlay(!showStreakOverlay);
     };
     
     // Toggle calendar modal with animation
@@ -575,12 +581,182 @@ export default function Home() {
       return format(date, 'MMMM d, yyyy');
     };
     
+    // Streak Overlay Component
+    const StreakOverlay = () => {
+      const overlayAnim = useRef(new Animated.Value(0)).current;
+      const contentAnim = useRef(new Animated.Value(0)).current;
+      
+      // Generate the last 7 days for the streak calendar
+      const generateLastSevenDays = () => {
+        const days = [];
+        const today = new Date();
+        
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          days.push({
+            date,
+            dayName: date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
+            isCompleted: checkDayCompleted(date)
+          });
+        }
+        
+        return days;
+      };
+      
+      // Check if a journal entry exists for a specific day
+      const checkDayCompleted = (date) => {
+        if (!user) return false;
+        
+        try {
+          const userData = typeof user === 'string' ? JSON.parse(user) : user;
+          if (!userData.Journal || !Array.isArray(userData.Journal)) return false;
+          
+          // Set hours to 0 for date comparison
+          const targetDate = new Date(date);
+          targetDate.setHours(0, 0, 0, 0);
+          
+          // Check if any journal entry matches this date
+          return userData.Journal.some(entry => {
+            const entryDate = new Date(entry.date);
+            entryDate.setHours(0, 0, 0, 0);
+            return entryDate.getTime() === targetDate.getTime();
+          });
+        } catch (error) {
+          console.error('Error checking completed days:', error);
+          return false;
+        }
+      };
+      
+      // Animation effect
+      useEffect(() => {
+        Animated.parallel([
+          Animated.timing(overlayAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.spring(contentAnim, {
+            toValue: 1,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, []);
+      
+      // Handle close with animation
+      const handleClose = () => {
+        Animated.parallel([
+          Animated.timing(overlayAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(contentAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setShowStreakOverlay(false);
+        });
+      };
+      
+      const lastSevenDays = generateLastSevenDays();
+      
+      return (
+        <Modal
+          transparent={true}
+          visible={true}
+          animationType="none"
+          onRequestClose={handleClose}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={handleClose}
+            className="flex-1 justify-center items-center"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          >
+            <Animated.View
+              style={{
+                opacity: overlayAnim,
+                transform: [
+                  {
+                    scale: contentAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.9, 1],
+                    }),
+                  },
+                ],
+              }}
+              className="w-[85%] bg-zinc-900 rounded-3xl overflow-hidden"
+            >
+              <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+                <View className="p-6">
+                  {/* Streak Card Header */}
+                  <View className="items-center mb-4">
+                    <View className="w-16 h-16 bg-orange-500/20 rounded-full items-center justify-center mb-2">
+                      <Ionicons name="flame" size={32} color="#f97316" />
+                    </View>
+                    <Text className="text-white text-2xl font-bold">{currentStreak} Day streak</Text>
+                    <Text className="text-zinc-400 text-sm mt-1">
+                      You're on fire! Every day matters for hitting your goals
+                    </Text>
+                  </View>
+                  
+                  {/* Weekly Calendar */}
+                  <View className="mt-4 mb-2">
+                    <View className="flex-row justify-between mb-4">
+                      {lastSevenDays.map((day, index) => (
+                        <View key={index} className="items-center">
+                          <Text className="text-zinc-400 text-xs mb-2">{day.dayName}</Text>
+                          <View 
+                            className={`w-8 h-8 rounded-full items-center justify-center ${
+                              day.isCompleted ? 'bg-orange-500/20' : 'bg-zinc-800'
+                            }`}
+                          >
+                            {day.isCompleted ? (
+                              <Ionicons name="checkmark-circle" size={18} color="#f97316" />
+                            ) : (
+                              <View className="w-2 h-2 rounded-full bg-zinc-700" />
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  
+                  {/* Motivational Message */}
+                  <View className="mt-4 p-4 bg-zinc-800/50 rounded-xl">
+                    <Text className="text-white text-sm text-center">
+                      {currentStreak > 0 
+                        ? `Keep going! You've journaled for ${currentStreak} consecutive day${currentStreak > 1 ? 's' : ''}.` 
+                        : 'Start journaling today to begin your streak!'}
+                    </Text>
+                  </View>
+                  
+                  {/* Close Button */}
+                  <TouchableOpacity
+                    onPress={handleClose}
+                    className="mt-6 bg-zinc-800 py-3 rounded-xl"
+                  >
+                    <Text className="text-white font-medium text-center">Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Modal>
+      );
+    };
+    
     return (
       <View className="mb-6">
         {/* App title and menu row */}
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
-            <View
+            <View 
               className="w-10 h-10 rounded-xl mr-3 items-center justify-center"
               style={{
                 backgroundColor: '#27272a',
@@ -595,7 +771,7 @@ export default function Home() {
           
           <View className="flex-row items-center">
             {/* Streak Counter */}
-            <TouchableOpacity onPress={toggleStreakTooltip} activeOpacity={0.7}>
+            <TouchableOpacity onPress={toggleStreakOverlay} activeOpacity={0.7}>
               <View 
                 className="bg-zinc-800/80 rounded-full px-3 py-2.5 mr-2 flex-row items-center justify-center"
                 style={{
@@ -609,7 +785,7 @@ export default function Home() {
                 <Text className="text-white font-medium ml-1">{currentStreak}</Text>
               </View>
               
-              {/* Streak Tooltip */}
+              {/* Streak Tooltip - keeping for reference but using overlay instead */}
               {showStreakTooltip && (
                 <Animated.View 
                   className="absolute top-12 right-0 bg-zinc-800 rounded-lg p-3 z-50"
@@ -840,6 +1016,9 @@ export default function Home() {
             </BlurView>
           </View>
         </Modal>
+        
+        {/* Streak Overlay */}
+        {showStreakOverlay && <StreakOverlay />}
       </View>
     );
   };
@@ -1683,7 +1862,7 @@ export default function Home() {
                             pathname: "/JournalPage",
                             params: { id: journalId, mode: 'edit' }
                           });
-                        }}
+                        }} 
                       >
                         <View className="w-8 h-8 rounded-full items-center justify-center mr-3 bg-zinc-700">
                           <Ionicons name="pencil-outline" size={18} color="#d4d4d8" />
@@ -2040,7 +2219,7 @@ export default function Home() {
         <OptionsOverlay />
         
         {/* Theme Overlay */}
-        <ThemeOverlay />
+        {showThemeOverlay && <ThemeOverlay />}
       </SafeAreaView>
     </View>
   );

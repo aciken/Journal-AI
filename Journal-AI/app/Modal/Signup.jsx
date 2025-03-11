@@ -68,7 +68,7 @@ export default function Signup() {
     
 
     try {
-      const response = await axios.put('https://a68e-109-245-199-118.ngrok-free.app/signup', {
+      const response = await axios.put('https://9fe4-109-245-199-118.ngrok-free.app/signup', {
         name,
         email,
         password

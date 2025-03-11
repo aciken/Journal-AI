@@ -277,9 +277,18 @@ export default function JournalPage() {
 
   const saveJournalServer = async () => {
     try {
-      console.log(JSON.parse(user)._id, id, journalContent);
-      const response = await axios.put('https://a68e-109-245-199-118.ngrok-free.app/savejournal', {
-        userId: JSON.parse(user)._id,
+      // Safely parse user data if it's a string, or use it directly if it's already an object
+      const userData = typeof user === 'string' ? JSON.parse(user) : user;
+      
+      // Check if userData exists and has _id property
+      if (!userData || !userData._id) {
+        console.error('Invalid user data for saving to server');
+        return;
+      }
+      
+      console.log(userData._id, id, journalContent);
+      const response = await axios.put('https://9fe4-109-245-199-118.ngrok-free.app/savejournal', {
+        userId: userData._id,
         journalId: id,
         content: journalContent
       });
@@ -547,9 +556,17 @@ export default function JournalPage() {
                   // Save content before navigating back
                   const journalId = id?.toString();
                   
-                  // Correctly accessing user properties
-                  console.log(JSON.parse(user)._id)
-
+                  // Safely parse user data if it's a string, or use it directly if it's already an object
+                  try {
+                    const userData = typeof user === 'string' ? JSON.parse(user) : user;
+                    if (userData && userData._id) {
+                      console.log(userData._id);
+                    } else {
+                      console.log('No valid user data found');
+                    }
+                  } catch (error) {
+                    console.error('Error parsing user data:', error);
+                  }
                   
                   console.log('aaaa',journalId, journalContent, entry.content)
                   // Normalize both strings for comparison (trim whitespace and handle null/undefined)
@@ -602,8 +619,8 @@ export default function JournalPage() {
                 </TouchableOpacity>
               </View>
               
-              {/* Save Button - Animated and in header */}
-              <View className="flex-row items-center">
+              {/* Save Button - Fixed width container to prevent layout shifts */}
+              <View className="flex-row items-center" style={{ minWidth: 70, justifyContent: 'flex-end' }}>
                 {contentChanged ? (
                   <Animated.View
                     style={{
@@ -611,7 +628,8 @@ export default function JournalPage() {
                         { scale: buttonAnimation }
                       ],
                       opacity: buttonAnimation,
-                      marginRight: 12
+                      position: 'absolute',
+                      right: 40
                     }}
                   >
                     <TouchableOpacity
@@ -635,9 +653,7 @@ export default function JournalPage() {
                       )}
                     </TouchableOpacity>
                   </Animated.View>
-                ) : (
-                  <View style={{ width: 0 }} /> 
-                )}
+                ) : null}
                 
                 {/* Plus button */}
                 <TouchableOpacity
