@@ -75,6 +75,7 @@ export default function CreateJournal() {
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await AsyncStorage.getItem('user');
+      console.log('home data', JSON.parse(userData).Journal[11]);
       setUser(JSON.parse(userData));
     };
     fetchUser();
@@ -163,7 +164,7 @@ export default function CreateJournal() {
       }),
     ]).start();
 
-    axios.put('https://9fe4-109-245-199-118.ngrok-free.app/addjournal', {
+    axios.put('https://eb3f-109-245-199-118.ngrok-free.app/addjournal', {
       userId: user._id,
       journal: newEntry
     }).then((response) => {

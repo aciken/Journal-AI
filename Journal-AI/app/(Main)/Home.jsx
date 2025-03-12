@@ -53,7 +53,26 @@ export default function Home() {
   const calendarContentAnim = useRef(new Animated.Value(0)).current;
   const optionsAnim = useRef(new Animated.Value(0)).current;  // Updated for options overlay
   const themeAnim = useRef(new Animated.Value(0)).current;    // Updated for theme overlay
-  
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          // Make sure we're parsing valid JSON
+          const parsedUser = JSON.parse(userData);
+          console.log('home data', parsedUser.Journal ? parsedUser.Journal[11] : 'No journal data');
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -363,11 +382,11 @@ export default function Home() {
       const checkDayCompleted = (date) => {
         if (!user) return false;
         try {
-          const userData = typeof user === 'string' ? JSON.parse(user) : user;
-          if (!userData.Journal || !Array.isArray(userData.Journal)) return false;
+          // No need to parse user again since it's already an object
+          if (!user.Journal || !Array.isArray(user.Journal)) return false;
           const targetDate = new Date(date);
           targetDate.setHours(0, 0, 0, 0);
-          return userData.Journal.some(entry => {
+          return user.Journal.some(entry => {
             const entryDate = new Date(entry.date);
             entryDate.setHours(0, 0, 0, 0);
             return entryDate.getTime() === targetDate.getTime();
@@ -590,7 +609,16 @@ export default function Home() {
     };
 
     return (
-      <TouchableOpacity className="mb-4" onPress={() => router.push({ pathname: "/JournalPage", params: { id: journalId } })} onLongPress={handleLongPress} delayLongPress={300}>
+      <TouchableOpacity className="mb-4" onPress={() => {
+        console.log('Opening journal with ID:', journalId);
+        // Add a slight delay to ensure any animations complete
+        setTimeout(() => {
+          router.push({
+            pathname: "/JournalPage",
+            params: { id: journalId }
+          });
+        }, 50);
+      }} onLongPress={handleLongPress} delayLongPress={300}>
         <View className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(24, 24, 27, 0.7)', borderWidth: 1, borderColor: 'rgba(39, 39, 42, 0.8)', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 }}>
           <View className="p-5">
             <View className="flex-row justify-between items-start mb-3">
@@ -803,7 +831,9 @@ export default function Home() {
                       onPress={() => { 
                         console.log('Navigating to Theme page');
                         toggleOptionsOverlay(); 
-                        router.push('/Modal/Theme');
+                        setTimeout(() => {
+                          router.push('/Modal/Theme');
+                        }, 100);
                       }}
                     >
                       <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
@@ -1050,7 +1080,15 @@ export default function Home() {
                       <Text className="text-zinc-400 text-xs mt-1">{selectedJournalForContext.displayDate || selectedJournalForContext.date} • {selectedJournalForContext.time}</Text>
                     </View>
                     <View>
-                      <TouchableOpacity className="flex-row items-center p-4 border-b border-zinc-800" onPress={() => { setShowContextMenu(false); router.push({ pathname: "/JournalPage", params: { id: journalId, mode: 'edit' } }); }}>
+                      <TouchableOpacity className="flex-row items-center p-4 border-b border-zinc-800" onPress={() => { 
+                        setShowContextMenu(false); 
+                        setTimeout(() => {
+                          router.push({ 
+                            pathname: "/JournalPage", 
+                            params: { id: journalId, mode: 'edit' } 
+                          }); 
+                        }, 50);
+                      }}>
                         <View className="w-8 h-8 rounded-full items-center justify-center mr-3 bg-zinc-700">
                           <Ionicons name="pencil-outline" size={18} color="#d4d4d8" />
                         </View>
@@ -1131,7 +1169,7 @@ export default function Home() {
         const user = JSON.parse(userData);
         const updatedUser = { ...user, themePreference: themeKey };
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(JSON.stringify(updatedUser));
+        setUser(updatedUser);
         setSelectedTheme(themeKey);
       }
     } catch (error) {
@@ -1143,8 +1181,8 @@ export default function Home() {
     const loadThemePreference = async () => {
       try {
         if (user) {
-          const userData = JSON.parse(user);
-          setSelectedTheme(userData.themePreference || 'dark');
+          // No need to parse user again since it's already an object
+          setSelectedTheme(user.themePreference || 'dark');
         }
       } catch (error) {
         console.error('Error loading theme preference:', error);
@@ -1158,12 +1196,12 @@ export default function Home() {
     const updateStreak = () => {
       if (!user) return;
       try {
-        const userData = JSON.parse(user);
-        if (!userData.Journal || !Array.isArray(userData.Journal) || userData.Journal.length === 0) {
+        // No need to parse user again since it's already an object
+        if (!user.Journal || !Array.isArray(user.Journal) || user.Journal.length === 0) {
           setCurrentStreak(0);
           return;
         }
-        const sortedEntries = [...userData.Journal].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sortedEntries = [...user.Journal].sort((a, b) => new Date(b.date) - new Date(a.date));
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const latestEntryDate = new Date(sortedEntries[0].date);
@@ -1241,7 +1279,18 @@ export default function Home() {
         <View className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
           <View className="rounded-full overflow-hidden" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}>
             <LinearGradient colors={['rgba(39, 39, 42, 0.9)', 'rgba(24, 24, 27, 0.9)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} className="p-[1px] rounded-full">
-              <TouchableOpacity className="w-full h-12 rounded-full" style={{ backgroundColor: 'rgba(24, 24, 27, 0.8)' }} onPress={() => router.push({ pathname: '/AskJournal' })}>
+              <TouchableOpacity 
+                className="w-full h-12 rounded-full" 
+                style={{ backgroundColor: 'rgba(24, 24, 27, 0.8)' }} 
+                onPress={() => {
+                  console.log('Opening Ask Your Journal');
+                  setTimeout(() => {
+                    router.push({
+                      pathname: "/AskJournal"
+                    });
+                  }, 50);
+                }}
+              >
                 <View className="w-full h-full flex-row items-center justify-center">
                   <Ionicons name="search" size={18} color="#e4e4e7" style={{ marginRight: 8 }} />
                   <Text className="text-zinc-200 text-base font-medium">Ask Your Journal</Text>

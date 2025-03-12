@@ -73,7 +73,6 @@ export default function WelcomePage() {
         if (userData) {
           console.log('Setting user:', JSON.parse(userData));
           setUser(JSON.parse(userData));
-          AsyncStorage.setItem('user', JSON.stringify(JSON.parse(userData)));
           // User is logged in, redirect to Home
           setTimeout(() => {
             router.replace('/Home');

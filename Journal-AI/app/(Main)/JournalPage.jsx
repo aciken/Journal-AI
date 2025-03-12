@@ -287,7 +287,7 @@ export default function JournalPage() {
       }
       
       console.log(userData._id, id, journalContent);
-      const response = await axios.put('https://9fe4-109-245-199-118.ngrok-free.app/savejournal', {
+      const response = await axios.put('https://eb3f-109-245-199-118.ngrok-free.app/savejournal', {
         userId: userData._id,
         journalId: id,
         content: journalContent
