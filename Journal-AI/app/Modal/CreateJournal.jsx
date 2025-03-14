@@ -164,7 +164,7 @@ export default function CreateJournal() {
       }),
     ]).start();
 
-    axios.put('https://eb3f-109-245-199-118.ngrok-free.app/addjournal', {
+    axios.put('https://e054-109-245-199-118.ngrok-free.app/addjournal', {
       userId: user._id,
       journal: newEntry
     }).then((response) => {

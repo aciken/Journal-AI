@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOfWeek, subWeeks, subDays, startOfYear, subMonths } from 'date-fns';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import JournalIcon from '../../assets/Icons/TextIcon.png';
 import { Image } from 'react-native';
@@ -70,8 +70,6 @@ export default function Home() {
     };
     fetchUser();
   }, []);
-
-
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -301,7 +299,6 @@ export default function Home() {
   };
 
   const JournalHeader = () => {
-    const [showCalendar, setShowCalendar] = useState(false);
     const [showStreakTooltip, setShowStreakTooltip] = useState(false);
     const [showStreakOverlay, setShowStreakOverlay] = useState(false);
     const today = new Date();
@@ -323,26 +320,17 @@ export default function Home() {
       setShowStreakOverlay(!showStreakOverlay);
     };
     
-    const toggleCalendarModal = () => {
-      setShowCalendar(!showCalendar);
+    const navigateToDateSelector = () => {
+      router.push('/Modal/DateSelector');
     };
     
-    const generateCalendarDays = () => {
-      const monthStart = startOfMonth(selectedDate);
-      const monthEnd = endOfMonth(selectedDate);
-      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      const dayOfWeek = monthStart.getDay();
-      const paddingDays = Array(dayOfWeek).fill(null);
-      return [...paddingDays, ...daysInMonth];
+    const navigateToFolderSelector = () => {
+      router.push('/Modal/FolderSelector');
     };
     
-    const dateOptions = [
-      { label: 'Today', date: new Date() },
-      { label: 'Yesterday', date: subDays(new Date(), 1) },
-      { label: 'This Week', date: startOfWeek(new Date()) },
-      { label: 'This Month', date: startOfMonth(new Date()) },
-      { label: 'Last Month', date: startOfMonth(subMonths(new Date(), 1)) },
-    ];
+    const formatHeaderDate = (date) => {
+      return format(date, 'MMMM d, yyyy');
+    };
     
     const getCurrentFolder = () => {
       if (!selectedFolder) return "All Journals";
@@ -354,10 +342,6 @@ export default function Home() {
       if (!selectedFolder) return null;
       const folder = folders.find(f => f.id === selectedFolder);
       return folder ? folder.color : null;
-    };
-    
-    const formatHeaderDate = (date) => {
-      return format(date, 'MMMM d, yyyy');
     };
     
     const StreakOverlay = () => {
@@ -479,18 +463,38 @@ export default function Home() {
           </View>
         </View>
         <View className="flex-row justify-between items-center mb-5">
-          <TouchableOpacity className="flex-row items-center bg-zinc-800/80 rounded-xl px-3.5 py-2.5" onPress={toggleCalendarModal}>
+          <TouchableOpacity 
+            className="flex-row items-center bg-zinc-800/80 rounded-xl px-3.5 py-2.5" 
+            onPress={navigateToDateSelector}
+            style={{ borderWidth: 1, borderColor: 'rgba(63, 63, 70, 0.5)' }}
+          >
             <Ionicons name="calendar-outline" size={18} color="#d4d4d8" />
             <Text className="text-gray-300 text-base ml-2 font-medium">{formatHeaderDate(selectedDate)}</Text>
             <Ionicons name="chevron-down-outline" size={16} color="#a8a29e" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
-          <TouchableOpacity className="flex-row items-center bg-zinc-800/80 rounded-xl px-3.5 py-2.5" onPress={toggleFolderModal} style={selectedFolder ? { borderLeftWidth: 3, borderLeftColor: getFolderColor(), paddingLeft: 8 } : {}}>
+          <TouchableOpacity 
+            className="flex-row items-center bg-zinc-800/80 rounded-xl px-3.5 py-2.5" 
+            onPress={navigateToFolderSelector} 
+            style={selectedFolder ? { 
+              borderLeftWidth: 3, 
+              borderLeftColor: getFolderColor(), 
+              paddingLeft: 8,
+              borderWidth: 1,
+              borderColor: 'rgba(63, 63, 70, 0.5)'
+            } : {
+              borderWidth: 1,
+              borderColor: 'rgba(63, 63, 70, 0.5)'
+            }}
+          >
             <Ionicons name="folder-outline" size={18} color="#d4d4d8" />
             <Text className="text-gray-300 text-base ml-2 font-medium">{getCurrentFolder()}</Text>
             <Ionicons name="chevron-down-outline" size={16} color="#a8a29e" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity className="mb-4 flex-row items-center" onPress={() => createNewJournal('journal')}>
+        <TouchableOpacity 
+          className="mb-4 flex-row items-center" 
+          onPress={() => createNewJournal('journal')}
+        >
           <View className="rounded-xl p-4 flex-row items-center flex-1" style={{ backgroundColor: 'rgba(24, 24, 27, 0.7)', borderWidth: 1, borderColor: 'rgba(39, 39, 42, 0.8)' }}>
             <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'rgba(163, 163, 163, 0.2)' }}>
               <Ionicons name="add-outline" size={20} color="#e4e4e7" />
@@ -501,63 +505,6 @@ export default function Home() {
             </View>
           </View>
         </TouchableOpacity>
-        <Modal visible={showCalendar} transparent={true} animationType="fade" onRequestClose={toggleCalendarModal}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}>
-            <BlurView intensity={30} tint="dark" style={{ flex: 1 }}>
-              <SafeAreaView className="flex-1">
-                <View className="flex-1 justify-start items-center px-6 pt-10">
-                  <View className="w-full mb-6 flex-row justify-between items-center">
-                    <Text className="text-white text-xl font-medium">Select Date</Text>
-                    <TouchableOpacity onPress={toggleCalendarModal}>
-                      <Ionicons name="close" size={24} color="#d6d3d1" />
-                    </TouchableOpacity>
-                  </View>
-                  <View className="w-full rounded-xl p-4 mb-4" style={{ backgroundColor: 'rgba(24, 24, 27, 0.7)', borderWidth: 1, borderColor: 'rgba(39, 39, 42, 0.8)' }}>
-                    <View className="flex-row justify-between items-center mb-4">
-                      <TouchableOpacity onPress={() => setSelectedDate(new Date(selectedDate.setMonth(selectedDate.getMonth() - 1)))} className="p-2">
-                        <Ionicons name="chevron-back" size={20} color="#d6d3d1" />
-                      </TouchableOpacity>
-                      <Text className="text-white font-medium text-lg">{format(selectedDate, 'MMMM yyyy')}</Text>
-                      <TouchableOpacity onPress={() => setSelectedDate(new Date(selectedDate.setMonth(selectedDate.getMonth() + 1)))} className="p-2">
-                        <Ionicons name="chevron-forward" size={20} color="#d6d3d1" />
-                      </TouchableOpacity>
-                    </View>
-                    <View className="flex-row justify-between mb-2">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                        <Text key={index} className="text-gray-400 text-center" style={{ width: 36 }}>{day}</Text>
-                      ))}
-                    </View>
-                    <View className="flex-row flex-wrap">
-                      {generateCalendarDays().map((date, index) => {
-                        if (!date) return <View key={`empty-${index}`} style={{ width: 36, height: 36, margin: 2 }} />;
-                        const isToday = isSameDay(date, new Date());
-                        const isSelected = isSameDay(date, selectedDate);
-                        return (
-                          <TouchableOpacity key={index} onPress={() => setSelectedDate(date)} className={`items-center justify-center rounded-full m-1 ${isSelected ? 'bg-zinc-600' : isToday ? 'bg-zinc-700' : ''}`} style={{ width: 36, height: 36 }}>
-                            <Text className={`text-center ${isSelected ? 'text-white font-bold' : isToday ? 'text-white' : 'text-gray-300'}`}>{date.getDate()}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                  <View className="w-full rounded-xl p-4 mb-4" style={{ backgroundColor: 'rgba(24, 24, 27, 0.7)', borderWidth: 1, borderColor: 'rgba(39, 39, 42, 0.8)' }}>
-                    <Text className="text-white font-medium mb-3">Quick Select</Text>
-                    <View className="flex-row flex-wrap">
-                      {dateOptions.map((option, index) => (
-                        <TouchableOpacity key={index} onPress={() => setSelectedDate(option.date)} className="bg-zinc-700/60 rounded-full px-3 py-1.5 mr-2 mb-2">
-                          <Text className="text-white text-sm">{option.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                  <TouchableOpacity className="w-full rounded-xl py-3 items-center" style={{ backgroundColor: 'rgba(39, 39, 42, 0.8)', borderWidth: 1, borderColor: 'rgba(63, 63, 70, 0.4)' }} onPress={toggleCalendarModal}>
-                    <Text className="text-white font-medium">Confirm</Text>
-                  </TouchableOpacity>
-                </View>
-              </SafeAreaView>
-            </BlurView>
-          </View>
-        </Modal>
         {showStreakOverlay && <StreakOverlay />}
       </View>
     );
@@ -695,316 +642,6 @@ export default function Home() {
     return filtered;
   };
 
-  const FolderModal = () => (
-    <Modal visible={showFolderModal} transparent={true} animationType="fade" onRequestClose={toggleFolderModal}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}>
-        <BlurView intensity={30} tint="dark" style={{ flex: 1 }}>
-          <SafeAreaView className="flex-1">
-            <View className="flex-1 justify-start items-center px-6 pt-10">
-              <View className="bg-zinc-900 rounded-xl overflow-hidden w-full">
-                <View className="border-b border-zinc-800 p-4 flex-row justify-between items-center">
-                  <Text className="text-white text-lg font-medium">Select Folder</Text>
-                  <TouchableOpacity onPress={toggleFolderModal}>
-                    <Ionicons name="close" size={20} color="#d6d3d1" />
-                  </TouchableOpacity>
-                </View>
-                <View className="p-4">
-                  <TouchableOpacity className={`flex-row items-center p-3 mb-2 rounded-lg ${!selectedFolder ? 'bg-blue-500/20' : ''}`} onPress={() => animateFolderSelection(null)}>
-                    <Ionicons name="albums-outline" size={20} color="#d6d3d1" />
-                    <Text className="text-white ml-3">All Journals</Text>
-                    {!selectedFolder && <Ionicons name="checkmark" size={20} color="#3b82f6" style={{ marginLeft: 'auto' }} />}
-                  </TouchableOpacity>
-                  {folders.map((folder, index) => (
-                    <TouchableOpacity key={folder.id} className={`flex-row items-center p-3 mb-2 rounded-lg ${selectedFolder === folder.id ? 'bg-blue-500/20' : ''}`} onPress={() => animateFolderSelection(folder.id)}>
-                      <View className="w-5 h-5 rounded-full" style={{ backgroundColor: getFolderColor(folder, index) }} />
-                      <Text className="text-white ml-3">{folder.name}</Text>
-                      {selectedFolder === folder.id && <Ionicons name="checkmark" size={20} color="#3b82f6" style={{ marginLeft: 'auto' }} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View className="p-4 border-t border-zinc-800">
-                  <TouchableOpacity className="flex-row items-center justify-center p-3 rounded-lg bg-zinc-800" onPress={() => { console.log('Create new folder'); toggleFolderModal(); }}>
-                    <Ionicons name="add-circle-outline" size={20} color="#d6d3d1" />
-                    <Text className="text-white ml-2">Create New Folder</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </SafeAreaView>
-        </BlurView>
-      </View>
-    </Modal>
-  );
-
-  // Updated OptionsOverlay with improved animations
-  const OptionsOverlay = () => {
-    const scale = optionsAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.95, 1],
-      extrapolate: 'clamp',
-    });
-
-    const opacity = optionsAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
-    const translateY = optionsAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [50, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <Modal
-        visible={showOptionsOverlay}
-        transparent={true}
-        animationType="none"
-        onRequestClose={toggleOptionsOverlay}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={{ flex: 1 }}
-          onPress={toggleOptionsOverlay}
-        >
-          <Animated.View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              opacity,
-            }}
-          >
-            <BlurView intensity={50} tint="dark" style={{ flex: 1 }}>
-              <SafeAreaView className="flex-1">
-                <Animated.View 
-                  className="flex-1 justify-start items-center px-6 pt-20"
-                  style={{
-                    opacity,
-                    transform: [{ scale }, { translateY }],
-                  }}
-                >
-                  <View className="w-full mb-8">
-                    <View className="flex-row items-center justify-center">
-                      <Text className="text-white text-xl font-medium">Menu Options</Text>
-                    </View>
-                  </View>
-                  <View className="w-full space-y-4">
-                    <TouchableOpacity className="flex-row items-center bg-zinc-900/80 rounded-xl p-4" onPress={() => { toggleOptionsOverlay(); console.log('Navigate to Memories'); }}>
-                      <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
-                        <Ionicons name="images-outline" size={22} color="#d6d3d1" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-white text-lg">Memories</Text>
-                        <Text className="text-zinc-400 text-sm">Revisit past journal entries</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="flex-row items-center bg-zinc-900/80 rounded-xl p-4" onPress={() => { toggleOptionsOverlay(); console.log('Navigate to Stats'); }}>
-                      <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
-                        <Ionicons name="bar-chart-outline" size={22} color="#d6d3d1" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-white text-lg">Stats</Text>
-                        <Text className="text-zinc-400 text-sm">View insights and analytics</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="flex-row items-center bg-zinc-900/80 rounded-xl p-4" onPress={() => { toggleOptionsOverlay(); console.log('Navigate to Search'); }}>
-                      <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
-                        <Ionicons name="search-outline" size={22} color="#d6d3d1" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-white text-lg">Search</Text>
-                        <Text className="text-zinc-400 text-sm">Find specific journal entries</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="flex-row items-center bg-zinc-900/80 rounded-xl p-4" onPress={() => { toggleOptionsOverlay(); router.push('/Modal/Settings'); }}>
-                      <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
-                        <Ionicons name="settings-outline" size={22} color="#d6d3d1" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-white text-lg">Settings</Text>
-                        <Text className="text-zinc-400 text-sm">Configure app preferences</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      className="flex-row items-center bg-zinc-900/80 rounded-xl p-4" 
-                      onPress={() => { 
-                        console.log('Navigating to Theme page');
-                        toggleOptionsOverlay(); 
-                        setTimeout(() => {
-                          router.push('/Modal/Theme');
-                        }, 100);
-                      }}
-                    >
-                      <View className="bg-zinc-800 rounded-full p-2.5 mr-4">
-                        <Ionicons name="color-palette-outline" size={22} color="#d6d3d1" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-white text-lg">Theme</Text>
-                        <Text className="text-zinc-400 text-sm">Customize app appearance</Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              </SafeAreaView>
-            </BlurView>
-          </Animated.View>
-        </TouchableOpacity>
-      </Modal>
-    );
-  };
-
-  // Updated ThemeOverlay with improved animations
-  const ThemeOverlay = () => {
-    const [localSelectedTheme, setLocalSelectedTheme] = useState(selectedTheme || 'dark');
-
-    const scale = themeAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.95, 1],
-      extrapolate: 'clamp',
-    });
-
-    const opacity = themeAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
-    const translateY = themeAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [50, 0],
-      extrapolate: 'clamp',
-    });
-
-    useEffect(() => {
-      if (showThemeOverlay) {
-        setLocalSelectedTheme(selectedTheme || 'dark');
-      }
-    }, [showThemeOverlay, selectedTheme]);
-
-    const applyTheme = () => {
-      saveThemePreference(localSelectedTheme);
-      toggleThemeOverlay();
-    };
-
-    const currentTheme = themes[localSelectedTheme] || themes.dark;
-
-    const renderThemeColor = (themeKey) => {
-      const theme = themes[themeKey];
-      return (
-        <View className="flex-row items-center space-x-2 mt-1">
-          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: theme.accent }} />
-          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: theme.card }} />
-          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: theme.background }} />
-        </View>
-      );
-    };
-
-    return (
-      <Modal
-        visible={showThemeOverlay}
-        transparent={true}
-        animationType="none"
-        onRequestClose={toggleThemeOverlay}
-      >
-        <Animated.View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            opacity,
-          }}
-        >
-          <BlurView intensity={20} tint="dark" style={{ flex: 1 }}>
-            <SafeAreaView className="flex-1 justify-center items-center px-4">
-              <Animated.View 
-                className="w-full rounded-3xl overflow-hidden"
-                style={{
-                  backgroundColor: 'rgba(23, 23, 23, 0.95)',
-                  borderColor: 'rgba(82, 82, 82, 0.2)',
-                  borderWidth: 1,
-                  maxHeight: '90%',
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 10 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 20,
-                  elevation: 10,
-                  transform: [{ scale }, { translateY }],
-                }}
-              >
-                <View className="w-full py-4 px-6 border-b border-zinc-800 flex-row justify-between items-center">
-                  <Text className="text-white text-xl font-medium">Select Theme</Text>
-                  <TouchableOpacity onPress={toggleThemeOverlay} className="bg-zinc-800 rounded-full p-1.5">
-                    <Ionicons name="close" size={20} color="#d6d3d1" />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView className="w-full" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                  <View className="px-6 pt-6 pb-4">
-                    <Text className="text-white text-base font-medium mb-3">Preview:</Text>
-                    <View className="rounded-lg overflow-hidden" style={{ backgroundColor: currentTheme.card, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                      <View className="p-4">
-                        <View className="mb-3">
-                          <Text style={{ color: currentTheme.text, fontWeight: 'bold', fontSize: 16 }}>Journal Preview</Text>
-                          <Text style={{ color: currentTheme.subtext, fontSize: 12, marginTop: 2 }}>Today, 10:30 AM</Text>
-                        </View>
-                        <View className="space-y-2">
-                          <View className="h-3 rounded-full w-full" style={{ backgroundColor: `${currentTheme.text}20` }} />
-                          <View className="h-3 rounded-full w-3/4" style={{ backgroundColor: `${currentTheme.text}20` }} />
-                          <View className="h-3 rounded-full w-5/6" style={{ backgroundColor: `${currentTheme.text}20` }} />
-                          <View className="h-3 rounded-full w-2/3" style={{ backgroundColor: `${currentTheme.text}20` }} />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                  <View className="px-6 pb-4">
-                    <Text className="text-white text-base font-medium mb-3">Available Themes:</Text>
-                    <View className="space-y-3">
-                      {Object.keys(themes).map((key) => (
-                        <TouchableOpacity key={key} className={`w-full py-3 px-4 rounded-xl border ${localSelectedTheme === key ? 'border-white' : 'border-zinc-800'}`} onPress={() => setLocalSelectedTheme(key)} style={{ backgroundColor: localSelectedTheme === key ? 'rgba(82, 82, 82, 0.3)' : 'rgba(39, 39, 42, 0.5)' }}>
-                          <View className="flex-row justify-between items-center">
-                            <View>
-                              <Text className="text-white text-base font-medium">{themes[key].name}</Text>
-                              {renderThemeColor(key)}
-                            </View>
-                            {localSelectedTheme === key && (
-                              <View className="bg-white rounded-full p-1.5">
-                                <Ionicons name="checkmark" size={14} color="#000" />
-                              </View>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </ScrollView>
-                <View className="px-6 py-4 border-t border-zinc-800">
-                  <TouchableOpacity className="w-full py-3 rounded-full" onPress={applyTheme} style={{ backgroundColor: '#ffffff', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 }}>
-                    <Text className="text-black text-center font-medium">Apply Theme</Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-            </SafeAreaView>
-          </BlurView>
-        </Animated.View>
-      </Modal>
-    );
-  };
-
-  const assignJournalToFolder = async (journalId, folderId) => {
-    try {
-      if (!user || !user.Journal) return;
-      const journalIndex = user.Journal.findIndex(j => j.id.toString() === journalId.toString());
-      if (journalIndex === -1) return;
-      const updatedJournals = [...user.Journal];
-      updatedJournals[journalIndex] = { ...updatedJournals[journalIndex], folderId: folderId };
-      const updatedUser = { ...user, Journal: updatedJournals };
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      setShowFolderManagementModal(false);
-    } catch (error) {
-      console.error('Error assigning journal to folder:', error);
-    }
-  };
-  
   const FolderManagementModal = () => (
     <Modal visible={showFolderManagementModal} transparent={true} animationType="fade" onRequestClose={() => setShowFolderManagementModal(false)}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}>
@@ -1235,6 +872,234 @@ export default function Home() {
     updateStreak();
   }, [user]);
 
+  // Add a useEffect hook to load the selected folder and date from AsyncStorage
+  useEffect(() => {
+    const loadSelections = async () => {
+      try {
+        // Load selected folder
+        const storedFolder = await AsyncStorage.getItem('selectedFolder');
+        if (storedFolder) {
+          setSelectedFolder(storedFolder);
+        }
+        
+        // Load selected date
+        const storedDate = await AsyncStorage.getItem('selectedDate');
+        if (storedDate) {
+          setSelectedDate(new Date(JSON.parse(storedDate)));
+        }
+      } catch (error) {
+        console.error('Error loading selections:', error);
+      }
+    };
+    
+    loadSelections();
+  }, []);
+
+  // Add a useFocusEffect to reload selections when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const reloadSelections = async () => {
+        try {
+          // Load selected folder
+          const storedFolder = await AsyncStorage.getItem('selectedFolder');
+          if (storedFolder) {
+            setSelectedFolder(storedFolder);
+          }
+          
+          // Load selected date
+          const storedDate = await AsyncStorage.getItem('selectedDate');
+          if (storedDate) {
+            setSelectedDate(new Date(JSON.parse(storedDate)));
+          }
+        } catch (error) {
+          console.error('Error reloading selections:', error);
+        }
+      };
+      
+      reloadSelections();
+    }, [])
+  );
+
+  const assignJournalToFolder = async (journalId, folderId) => {
+    try {
+      if (!user || !user.Journal) return;
+      const journalIndex = user.Journal.findIndex(j => j.id.toString() === journalId.toString());
+      if (journalIndex === -1) return;
+      const updatedJournals = [...user.Journal];
+      updatedJournals[journalIndex] = { ...updatedJournals[journalIndex], folderId: folderId };
+      const updatedUser = { ...user, Journal: updatedJournals };
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      setShowFolderManagementModal(false);
+    } catch (error) {
+      console.error('Error assigning journal to folder:', error);
+    }
+  };
+
+  // Options Overlay Component
+  const OptionsOverlay = () => {
+    if (!showOptionsOverlay) return null;
+    
+    return (
+      <Modal transparent={true} visible={true} animationType="none" onRequestClose={toggleOptionsOverlay}>
+        <TouchableOpacity activeOpacity={1} onPress={toggleOptionsOverlay} className="flex-1">
+          <Animated.View 
+            style={{ 
+              opacity: optionsAnim,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              flex: 1,
+            }}
+          >
+            <TouchableOpacity activeOpacity={1} className="flex-1" onPress={toggleOptionsOverlay}>
+              <Animated.View 
+                style={{
+                  transform: [
+                    { 
+                      translateY: optionsAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0]
+                      })
+                    }
+                  ],
+                  position: 'absolute',
+                  top: 100,
+                  right: 20,
+                  opacity: optionsAnim,
+                }}
+              >
+                <BlurView intensity={30} tint="dark" className="rounded-2xl overflow-hidden">
+                  <View className="bg-zinc-900/80 rounded-2xl overflow-hidden" style={{ borderWidth: 1, borderColor: '#3f3f46' }}>
+                    <TouchableOpacity 
+                      className="px-4 py-3.5 flex-row items-center" 
+                      onPress={() => {
+                        toggleOptionsOverlay();
+                        // Add a slight delay to ensure the options overlay closes first
+                        setTimeout(() => {
+                          router.push('/Modal/Theme');
+                        }, 100);
+                      }}
+                    >
+                      <View className="w-8 h-8 rounded-full bg-purple-500/20 items-center justify-center mr-3">
+                        <Ionicons name="color-palette-outline" size={18} color="#c084fc" />
+                      </View>
+                      <Text className="text-white text-base font-medium">Theme</Text>
+                    </TouchableOpacity>
+                    
+                    <View className="h-[1px] bg-zinc-800" />
+                    
+                    <TouchableOpacity 
+                      className="px-4 py-3.5 flex-row items-center" 
+                      onPress={() => {
+                        toggleOptionsOverlay();
+                        setTimeout(() => {
+                          router.push('/Modal/Settings');
+                        }, 100);
+                      }}
+                    >
+                      <View className="w-8 h-8 rounded-full bg-blue-500/20 items-center justify-center mr-3">
+                        <Ionicons name="settings-outline" size={18} color="#60a5fa" />
+                      </View>
+                      <Text className="text-white text-base font-medium">Settings</Text>
+                    </TouchableOpacity>
+                    
+                    <View className="h-[1px] bg-zinc-800" />
+                    
+                    <TouchableOpacity className="px-4 py-3.5 flex-row items-center">
+                      <View className="w-8 h-8 rounded-full bg-green-500/20 items-center justify-center mr-3">
+                        <Ionicons name="help-circle-outline" size={18} color="#4ade80" />
+                      </View>
+                      <Text className="text-white text-base font-medium">Help</Text>
+                    </TouchableOpacity>
+                  </View>
+                </BlurView>
+              </Animated.View>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  // Theme Overlay Component
+  const ThemeOverlay = () => {
+    if (!showThemeOverlay) return null;
+    
+    const handleThemeSelect = async (themeKey) => {
+      try {
+        setSelectedTheme(themeKey);
+        // Save theme preference to user data
+        if (user) {
+          const updatedUser = { ...user, themePreference: themeKey };
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+        }
+        toggleThemeOverlay();
+      } catch (error) {
+        console.error('Error saving theme preference:', error);
+      }
+    };
+    
+    return (
+      <Modal transparent={true} visible={true} animationType="none" onRequestClose={toggleThemeOverlay}>
+        <TouchableOpacity activeOpacity={1} onPress={toggleThemeOverlay} className="flex-1">
+          <Animated.View 
+            style={{ 
+              opacity: themeAnim,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              flex: 1,
+            }}
+          >
+            <TouchableOpacity activeOpacity={1} className="flex-1" onPress={toggleThemeOverlay}>
+              <Animated.View 
+                style={{
+                  transform: [
+                    { 
+                      translateY: themeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0]
+                      })
+                    }
+                  ],
+                  position: 'absolute',
+                  top: 100,
+                  right: 20,
+                  opacity: themeAnim,
+                }}
+              >
+                <BlurView intensity={30} tint="dark" className="rounded-2xl overflow-hidden">
+                  <View className="bg-zinc-900/80 rounded-2xl overflow-hidden" style={{ borderWidth: 1, borderColor: '#3f3f46' }}>
+                    <View className="px-4 py-3">
+                      <Text className="text-white text-lg font-bold mb-2">Select Theme</Text>
+                      {Object.entries(themes).map(([key, theme]) => (
+                        <TouchableOpacity 
+                          key={key}
+                          className="flex-row items-center py-2.5"
+                          onPress={() => handleThemeSelect(key)}
+                        >
+                          <View 
+                            className="w-8 h-8 rounded-full mr-3" 
+                            style={{ backgroundColor: theme.background, borderWidth: 1, borderColor: theme.accent }}
+                          />
+                          <View className="flex-1">
+                            <Text className="text-white font-medium">{theme.name}</Text>
+                            <Text className="text-zinc-400 text-xs">{theme.description}</Text>
+                          </View>
+                          {selectedTheme === key && (
+                            <Ionicons name="checkmark-circle" size={22} color={theme.accent} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </BlurView>
+              </Animated.View>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
   return (
     <View className="flex-1 bg-black">
       <StatusBar barStyle="light-content" />
@@ -1299,7 +1164,6 @@ export default function Home() {
             </LinearGradient>
           </View>
         </View>
-        <FolderModal />
         <FolderManagementModal />
         <ContextMenu />
         <OptionsOverlay />
